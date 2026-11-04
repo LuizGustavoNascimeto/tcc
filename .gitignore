@@ -1,0 +1,350 @@
+# =============================================================================
+# TCC LaTeX (UTFPR / abnTeX2) — gitignore forte
+# Ignora artefato de compilação. Mantém fonte: .tex .bib .cls .bst .eps figuras.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PDF gerado (raiz). Figuras e anexos em subpastas continuam versionados.
+# -----------------------------------------------------------------------------
+/*.pdf
+*-converted-to.*
+*-eps-converted-to.pdf
+*-eps-converted-to.*
+
+# -----------------------------------------------------------------------------
+# Núcleo LaTeX / pdfLaTeX / XeLaTeX / LuaLaTeX
+# -----------------------------------------------------------------------------
+*.aux
+*.lof
+*.log
+*.loge
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+*.dvi
+*.xdv
+.pdf
+
+# -----------------------------------------------------------------------------
+# Bibliografia: BibTeX, biblatex, biber, abntex2cite
+# -----------------------------------------------------------------------------
+*.bbl
+*.bbl-SAVE-ERROR
+*.bcf
+*.bcf-SAVE-ERROR
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+*.brf
+
+# -----------------------------------------------------------------------------
+# Ferramentas de build: latexmk, rubber, arara, latexrun
+# -----------------------------------------------------------------------------
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+*.rubbercache
+rubber.cache
+latex.out/
+build/
+out/
+_build/
+dist/
+*.fdb
+*.arara
+
+# -----------------------------------------------------------------------------
+# Este template: glossaries (siglas), nomencl (símbolos), makeindex, morewrites, pdfx
+# -----------------------------------------------------------------------------
+# glossaries / glossaries-extra (incluindo glossários numerados: .acn2, .acr3, ...)
+*.acn
+*.acn[0-9]*
+*.acr
+*.acr[0-9]*
+*.alg
+*.alg[0-9]*
+*.glg
+*.glg[0-9]*
+*.glg-abr
+*.glo
+*.glo[0-9]*
+*.glo-abr
+*.gls
+*.gls[0-9]*
+*.gls-abr
+*.glsdefs
+*.lzo
+*.lzs
+*.slg
+*.slo
+*.sls
+*.ist
+
+# nomencl
+*.nlg
+*.nlo
+*.nls
+
+# makeindex / xindy
+*.idx
+*.ilg
+*.ind
+*.lpz
+*.xdy
+
+# morewrites (utfpr.cls)
+*.mw
+
+# pdfx / xmpincl (PDF/A)
+*.xmpi
+pdfa.xmpi
+
+# listings
+*.lol
+*.listing
+
+# algorithms / algorithmic
+*.loa
+
+# memoir / tocloft extras
+*.lof
+*.lot
+*.toc
+
+# -----------------------------------------------------------------------------
+# Pacotes comuns em tese complexa
+# -----------------------------------------------------------------------------
+# minted
+_minted*/
+*.data.minted
+*.pyg
+
+# pythontex
+*.pytxcode
+pythontex-files-*/
+
+# TikZ / PGF / externalize
+*.dpth
+*.md5
+*.auxlock
+*.figlist
+*.makefile
+*.dep
+
+# knitr / R Markdown
+*-concordance.tex
+*-tikzDictionary
+
+# svg (svg package / inkscape)
+svg-inkscape/
+
+# standalone
+*.sta
+
+# beamer (se surgir apresentação)
+*.nav
+*.pre
+*.snm
+*.vrb
+
+# todonotes / changes / thmtools / endfloat / pdfcomment
+*.tdo
+*.soc
+*.loc
+*.loe
+*.ttt
+*.fff
+*.upa
+*.upb
+
+# attachfile, hypdoc, tcolorbox, titletoc, xcolor, newpax
+*.atfi
+*.hd
+*.ptc
+*.xcp
+*.newpax
+*.pax
+
+# sagetex / sympy / gnuplottex
+*.sagetex.sage
+*.sagetex.py
+*.sagetex.scmd
+*.sout
+*.sympy
+sympy-plots-for-*.tex/
+*.gnuplot
+*.table
+*-gnuplottex-*
+
+# minitoc
+*.maf
+*.mlf
+*.mlt
+*.mtc[0-9]*
+*.slf[0-9]*
+*.slt[0-9]*
+*.stc[0-9]*
+
+# latexdiff
+*.old
+*.new
+
+# -----------------------------------------------------------------------------
+# Editores LaTeX e IDEs
+# -----------------------------------------------------------------------------
+# VS Code / Cursor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.history/
+*.code-workspace
+
+# JetBrains
+.idea/
+
+# TeXstudio / Texmaker / WinEdt / TeXnicCenter / Texpad / Kile / LyX
+*.bak
+*.sav
+*.bak[0-9]*
+*.backup
+*.lyx~
+*.tps
+.texpadtmp
+*.texstudio
+*.txsprofile
+TSWLatexianTemp*
+
+# Emacs / AUCTeX / Vim
+*~
+\#*\#
+.\#*
+./auto/*
+auto/
+*.el
+*.swp
+*.swo
+.*.swp
+
+# Overleaf / ShareLaTeX
+.overleaf*
+output.log
+
+# latexindent
+*.bak[0-9]
+
+# KBibTeX
+*~[0-9]*
+
+# -----------------------------------------------------------------------------
+# Sistema operacional
+# -----------------------------------------------------------------------------
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+[Dd]esktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+__MACOSX/
+
+# Linux
+*~
+.fuse_hidden*
+.nfs*
+.directory
+
+# -----------------------------------------------------------------------------
+# Python / notebooks (análise, gráficos, scripts)
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.egg-info/
+.coverage
+htmlcov/
+
+# -----------------------------------------------------------------------------
+# R / knitr
+# -----------------------------------------------------------------------------
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# -----------------------------------------------------------------------------
+# Segredos e ambiente local
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+*.secret
+
+# -----------------------------------------------------------------------------
+# Compactados e lixo local
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.log.*
+*.cache
+*.orig
+*.rej
+*.patch
+*.diff
+*.zip
+*.7z
+*.rar
+*.tar
+*.tgz
+*.iso
+
+# -----------------------------------------------------------------------------
+# Git / ferramentas
+# -----------------------------------------------------------------------------
+*.orig
+*.BASE
+*.LOCAL
+*.REMOTE
+*_BACKUP_*
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+.classpath
+.gradle/
+node_modules/
