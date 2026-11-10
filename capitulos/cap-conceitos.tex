@@ -11,7 +11,7 @@ Este capítulo apresenta os conceitos necessários para o entendimento da
 proposta e dos experimentos. Primeiro, discute-se por que um sistema de
 microsserviços é um sistema distribuído e que desafios isso traz. Em seguida,
 distinguem-se as formas de comunicação síncrona e assíncrona, e apresenta-se o
-\textit{Remote Procedure Call} (RPC), modelo sobre o qual o gRPC é construído.
+RPC, modelo sobre o qual o gRPC é construído.
 
 \section{Microsserviços como sistemas distribuídos}
 
@@ -33,8 +33,7 @@ podem falhar de forma independente enquanto os demais continuam em
 funcionamento, e o cliente não consegue distinguir se a ausência de resposta
 vem de uma falha no servidor ou na rede \cite{DistributedSystems:2013}. Por
 isso, o sistema precisa ser projetado para detectar e tolerar falhas, e não
-apenas evitá-las. A consistência dos dados é outro custo da distribuição, mas
-está fora do escopo deste trabalho.
+apenas evitá-las.
 
 \section{Chamada de Procedimento Remoto (RPC)}
 
@@ -44,22 +43,50 @@ invoque procedimentos de um servidor remoto com a mesma sintaxe de uma chamada
 local, ocultando detalhes da distribuição, como a codificação e a decodificação
 de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013}.
 
+\begin{figure}[htb]%% Ambiente figure
+  %\captionsetup{width=0.55\textwidth}%% Largura da legenda
+  \caption{Diagrama representando uma chamada RPC}%% Legenda
+  \label{fig:diagrama-rpc}%% Rótulo
+  \includegraphics[width=\textwidth]{diagrama-rpc.png}%% Dimensões e localização
+  % Dimensões e localização
+  \fonte{Adaptado de \citeonline[p.~201]{DistributedSystems:2013}}%% Fonte
+  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama representando uma chamada RPC.}
+\end{figure}
+
 Essa transparência é viabilizada por um representante local do procedimento
-remoto, chamado \textit{proxy} ou \textit{stub} no lado do cliente. A cada
+remoto, chamado \textit{stub} no lado do cliente. A cada
 chamada, ele empacota (\textit{marshalling}) a identificação da operação e seus
 argumentos em uma mensagem de requisição, a envia ao servidor, bloqueia a
 execução do cliente até a chegada da resposta e, por fim, desempacota
 (\textit{unmarshalling}) os resultados ou exceções e os entrega ao código
-chamador \cite{DistributedSystems:2013}. Esse trabalho representa um custo de
+chamador \cite{DistributedSystems:2013}. A figura \ref{fig:diagrama-rpc} ilustra o processo, as
+setas tracejadas indicam comunicação interna enquanto as setas sólidas indicam comunicação via
+rede. Esse trabalho representa um custo de
 processamento a cada chamada, que se soma à latência da rede. Embora o RPC
 oculte a distribuição do programador, ele não a elimina: a latência e as falhas
 parciais discutidas anteriormente continuam presentes.
 
 \section{gRPC}
 
-% TODO: Protocol Buffers (contrato e serialização), HTTP/2 (multiplexação e
-% streams), tipos de chamada (unária e streaming) e deadlines.
-% Fonte sugerida: \cite{gRPC-Introduction:2026} e a documentação oficial.
+O gRPC é um \textit{framework} de RPC de código aberto no qual um cliente chama um método de um
+servidor em outra máquina como se fosse um objeto local. O serviço é definido de antemão, com os
+métodos que podem ser chamados remotamente e seus tipos de parâmetros e de retorno. O servidor
+implementa essa interface, eo cliente utiliza um \textit{stub} que expõe os mesmos métodos. Além
+das chamadas unárias, em que o cliente envia uma requisição e recebe uma únicaresposta, o gRPC
+oferece \textit{streaming} bidirecional. Para limitar o tempo de espera, o cliente também pode
+definir um \textit{deadline}, a chamada é encerrada com o erro\texttt{DEADLINE\_EXCEEDED} caso ele
+seja excedido \cite{gRPC-Documentation:2026}. Esse recurso é a base dos mecanismos detolerância a
+falhas discutidos adiante, pois evita que um cliente aguarde indefinidamente por um servidor que não responde.
 
+Por padrão, o gRPC utiliza o \textit{Protocol Buffers} como linguagem de
+definição de interfaces e como formato de serialização das mensagens. O
+\textit{Protocol Buffers} é um mecanismo neutro quanto a linguagem e plataforma,
+extensível, para serializar dados estruturados \cite{Protobuf:2026}. As
+mensagens e os serviços são descritos em arquivos \textit{.proto}, e o
+compilador \textit{protoc}, com o \textit{plugin} do gRPC, gera o código de
+cliente e servidor na linguagem escolhida, o que permite, por exemplo, um
+servidor em Java atender clientes em Go ou Python
+\cite{gRPC-Documentation:2026}. O arquivo \textit{.proto} funciona, assim, como
+um contrato único entre os serviços.
 
-
+\section{Trabalhos Relacionados}

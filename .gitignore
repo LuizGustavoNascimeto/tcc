@@ -203,7 +203,8 @@ sympy-plots-for-*.tex/
 # Editores LaTeX e IDEs
 # -----------------------------------------------------------------------------
 # VS Code / Cursor
-.vscode/*
+.vscode/
+.cursor/
 !.vscode/settings.json
 !.vscode/extensions.json
 .history/

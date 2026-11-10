@@ -909,6 +909,7 @@
 			\textbf{\@depositshortdate}\par
 		\end{center}
 	\end{adjustwidth}
+	\cleardoublepage%% Folha de aprovação ocupa a página inteira
 }
 %% luiz - fim
 

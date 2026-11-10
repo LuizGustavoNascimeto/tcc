@@ -23,7 +23,7 @@ bastante para se beneficiar de sua escalabilidade e autonomia.
 
 Nesse cenário, a escolha do mecanismo de comunicação entre serviços torna-se
 uma decisão arquitetural central. Entre as alternativas, destaca-se o
-\textit{Remote Procedure Call} (RPC), que permite invocar procedimentos em
+RPC, que permite invocar procedimentos em
 outro serviço como se fossem locais. O gRPC é uma das implementações mais
 difundidas desse modelo: utiliza o HTTP/2 como protocolo de transporte e o
 \textit{Protocol Buffers} como formato de serialização e linguagem de definição
@@ -65,8 +65,8 @@ alcançá-lo, definem-se os seguintes objetivos específicos:
     e p99), da vazão (\textit{throughput}) e da saturação dos recursos de
     hardware (CPU e memória);
   \item avaliar a disponibilidade e a tolerância a falhas em cenários de falha
-    induzida, por meio do tempo médio de recuperação (\textit{Mean Time To
-    Recovery}, MTTR) e da taxa de erros observada durante a falha;
+    induzida, por meio do tempo médio de recuperação (MTTR) e da taxa de
+    erros observada durante a falha;
   \item analisar a segurança do sistema, considerando a superfície de ataque, a
     exposição a riscos e as vulnerabilidades conhecidas nas tecnologias
     empregadas;
