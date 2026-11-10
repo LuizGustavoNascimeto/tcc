@@ -150,3 +150,7 @@
 % Luiz - configurar a margem dos itens
 \setlength{\leftmargini}{1.5cm}
 \setlength{\leftmarginii}{1.5cm}
+
+% pdfx + hyperref (PDF/A) quebram \find@pdflink no sumário.
+% Resultado: texto "LinkbordercolorLinkcolor" colado no título da seção.
+\hypersetup{hidelinks,colorlinks=false,linktoc=page}

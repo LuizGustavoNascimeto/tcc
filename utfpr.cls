@@ -1428,12 +1428,6 @@
 %% luiz : TODO - fazer só a primeira letra maiúscula e o resto minusculo automático - tentei mas perdeu a formatação, sugestão: https://tex.stackexchange.com/questions/380500/first-letter-upper-case-and-other-letters-in-lower-case
 
 
-\let\oldcontentsline\contentsline%% Título da seção no sumário em letras maíusculas
-\def\contentsline#1#2{%%
-  \expandafter\ifx\csname l@#1\endcsname\l@section\expandafter\@firstoftwo\else\expandafter\@secondoftwo\fi%%
-  {\oldcontentsline{#1}{#2}}{\oldcontentsline{#1}{#2}}%%
-} % ver o caixa alta no sumário e no texto... 
-
 % fim
 
 \renewcommand{\cftpartfont}{\normalfont\normalsize\bfseries}%% Estilo da parte no sumário

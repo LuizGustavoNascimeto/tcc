@@ -1,15 +1,31 @@
 {
+  "latex-workshop.formatting.latex": "tex-fmt",
+  "latex-workshop.formatting.tex-fmt.path": "C:\\Users\\Admin\\AppData\\Local\\Programs\\tex-fmt\\tex-fmt.exe",
+  "latex-workshop.formatting.tex-fmt.args": ["--wraplen", "110"],
+  
+  "[latex]": {
+    "editor.defaultFormatter": "James-Yu.latex-workshop"
+  },
   "latex-workshop.latex.outDir": "%DIR%/build",
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.latex.autoBuild.interval": 1000,
+  "latex-workshop.latex.autoClean.run": "never",
+  "latex-workshop.latex.clean.command": "C:\\Projetos\\tcc\\scripts\\latexmk.cmd",
+  "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.latex.recipes": [
     {
       "name": "latexmk",
       "tools": ["latexmk"]
+    },
+    {
+      "name": "latexmk watch",
+      "tools": ["latexmk-pvc"]
     }
   ],
   "latex-workshop.latex.tools": [
     {
       "name": "latexmk",
-      "command": "latexmk",
+      "command": "C:\\Projetos\\tcc\\scripts\\latexmk.cmd",
       "args": [
         "-f",
         "-synctex=1",
@@ -17,7 +33,27 @@
         "-file-line-error",
         "-pdf",
         "%DOC%"
-      ]
+      ],
+      "env": {
+        "PATH": "C:\\Program Files\\Git\\usr\\bin;C:\\Users\\Admin\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64;C:\\WINDOWS\\system32;C:\\WINDOWS"
+      }
+    },
+    {
+      "name": "latexmk-pvc",
+      "command": "C:\\Projetos\\tcc\\scripts\\latexmk.cmd",
+      "args": [
+        "-pvc",
+        "-f",
+        "-view=none",
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-pdf",
+        "%DOC%"
+      ],
+      "env": {
+        "PATH": "C:\\Program Files\\Git\\usr\\bin;C:\\Users\\Admin\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64;C:\\WINDOWS\\system32;C:\\WINDOWS"
+      }
     }
   ]
 }

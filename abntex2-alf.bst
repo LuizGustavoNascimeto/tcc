@@ -1733,7 +1733,7 @@ FUNCTION {article}
   format.author.or.organization  new.sentence
   iso.year.label
   format.title "title" output.check new.block
-  format.journal output ", " * write
+  format.journal output ", " * write$
   iso.date.place {format.year output} 'skip$ if$
   %iso.date.place {format.date output} 'skip$ if$
   %iso.date.place {abnt.alf 'skip$ {format.year output new.sentence} if$}
@@ -1741,9 +1741,9 @@ FUNCTION {article}
   section "section" bibinfo.check output.dash
   publisher "publisher" bibinfo.check output
   address "address" bibinfo.check output
-  format.volume output "," * write
-  format.number output "," * write
-  format.pages output "," * write
+  format.volume output "," * write$
+  format.number output "," * write$
+  format.pages output "," * write$
   non.iso.date 
   format.issn output new.block
   format.note output new.block
@@ -1759,7 +1759,7 @@ FUNCTION {book}
   format.furtherresp new.sentence
   format.edition output new.sentence
   format.publisher.address output
-  ", " * write
+  ", " * write$
   iso.date.place {abnt.alf 'skip$ {format.year output new.sentence} if$}
                  {format.year output new.sentence} if$
   format.volume output new.sentence
@@ -1804,11 +1804,11 @@ FUNCTION {inbook}
   iso.year.label
   format.title "title" output.check new.sentence
   format.in.ed.booktitle
-  %"In: " * write 
+  %"In: " * write$ 
   %booktitle output
   format.furtherresp new.sentence
   format.edition output new.sentence
-  format.publisher.address output ", " * write
+  format.publisher.address output ", " * write$
   %format.year output new.sentence
   iso.date.place {abnt.alf 'skip$ {format.year output new.sentence} if$}
                  {format.year output new.sentence} if$
@@ -1845,21 +1845,21 @@ FUNCTION {inproceedings}
   format.author.or.organization new.sentence
   iso.year.label
   format.title "title" output.check  new.sentence
-  %". " * write
+  %". " * write$
   %format.bvolume.if.no.series output
   %format.volume.number.series output
-  %"In:" * write
+  %"In:" * write$
   %booktitle output
-  %volume output ".," * write
+  %volume output ".," * write$
   format.in.ed.booktitle.inproceedings
   format.bvolume.noword output
-  "." * write
+  "." * write$
   %iso.date.place {abnt.alf 'skip$ {format.year output.comma new.sentence} if$}
   %               {format.year output.comma} if$
   format.year output.comma 
   address output.comma
-  ". " * write
-  "\textbf{Anais [...]}" * write
+  ". " * write$
+  "\textbf{Anais [...]}" * write$
   format.publisher.address output
   %format.year output new.sentence
   iso.date.place {abnt.alf 'skip$ {format.year output new.sentence} if$}
@@ -1904,7 +1904,7 @@ FUNCTION {manual}
   format.edition output new.sentence
   format.address.manual output 
   org-short output 
-  ", " * write % Adiciona o campo org-short, se existir
+  ", " * write$ % Adiciona o campo org-short, se existir
   iso.date.place 
     { abnt.alf 'skip$ { format.year output } if$ }
     { format.year output } if$
@@ -1924,10 +1924,10 @@ FUNCTION {misc}
   format.type output
   format.btitle output new.sentence
   format.furtherresp new.sentence
-  format.address output ": " * write
+  format.address output ": " * write$
   %format.publisher.address.relax output 
   %addres output
-  org-short output ", " * write
+  org-short output ", " * write$
   %format.date output  new.block
   iso.date.place {abnt.alf 'skip$ {format.year output new.sentence} if$}
                  {format.year output new.sentence} if$

@@ -1,10 +1,15 @@
-# Compila para build/. PDF final: build/main.pdf
+# Compila para build/. Copia só o PDF para ./main.pdf
 # Uso: latexmk -f
+# Watch (recompila ao salvar .tex): latexmk -pvc -f -view=none
 # Limpa: latexmk -C
+
+$sleep_time = 2;
 
 use Cwd qw(abs_path);
 use File::Basename;
+use File::Copy qw(copy);
 use File::Path qw(make_path);
+use File::Spec;
 
 @default_files = ('main.tex');
 
@@ -70,3 +75,21 @@ push @generated_exts, qw(
     xmpi mw run.xml
     synctex.gz
 );
+
+# PDF na raiz: aux/log/synctex ficam em build/. latexmk -C apaga a cópia.
+$success_cmd = 'internal copy_pdf_to_root';
+$failure_cmd = 'internal copy_pdf_to_root';
+sub copy_pdf_to_root {
+    my $src = File::Spec->catfile($root, 'build', 'main.pdf');
+    my $dst = File::Spec->catfile($root, 'main.pdf');
+    return 0 unless -f $src;
+    copy($src, $dst) or do {
+        warn "latexmk: falha ao copiar $src -> $dst: $!\n";
+        return 1;
+    };
+    return 0;
+}
+sub cleanup_hook {
+    my $dst = File::Spec->catfile($root, 'main.pdf');
+    unlink $dst if -f $dst;
+}
