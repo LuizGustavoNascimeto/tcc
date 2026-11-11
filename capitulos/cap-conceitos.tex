@@ -7,41 +7,55 @@
 %% Título e rótulo de capítulo (rótulos não devem conter caracteres especiais, acentuados ou cedilha)
 \chapter{Fundamentação Teórica}\label{cap:fundamentacaoTeorica}
 
-Este capítulo apresenta os conceitos necessários para o entendimento da
-proposta e dos experimentos. Primeiro, discute-se por que um sistema de
-microsserviços é um sistema distribuído e que desafios isso traz. Em seguida,
-distinguem-se as formas de comunicação síncrona e assíncrona, e apresenta-se o
-RPC, modelo sobre o qual o gRPC é construído.
+Este capítulo apresenta os conceitos necessários para o entendimento da proposta e dos
+experimentos. Primeiro, discute-se por que um sistema de microsserviços é um sistema distribuído e
+que desafios isso traz. Em seguida, distinguem-se as formas de comunicação síncrona e assíncrona e
+apresentam-se o RPC, o gRPC, o HTTP/2 e os mecanismos que o gRPC oferece para lidar com falhas.
 
 \section{Microsserviços como sistemas distribuídos}
 
-Em uma aplicação monolítica, os componentes compartilham o mesmo espaço de
-endereçamento e se comunicam por chamadas de função diretas. Ao decompor a
-aplicação em microsserviços, cada serviço passa a executar em seu próprio
-processo, em geral em máquinas diferentes. O resultado é um sistema distribuído:
-um conjunto de componentes em computadores interligados em rede que se
-comunicam e coordenam suas ações apenas pela troca de mensagens
-\cite{DistributedSystems:2013}.
+Em uma aplicação monolítica, os componentes compartilham o mesmo espaço de endereçamento e se
+comunicam por chamadas de função diretas. Ao decompor a aplicação em microsserviços, cada serviço
+passa a executar em seu próprio processo, em geral em máquinas diferentes. O resultado é um sistema
+distribuído: um conjunto de componentes em computadores interligados em rede que se comunicam e
+coordenam suas ações apenas pela troca de mensagens \cite{DistributedSystems:2013}.
 
-Essa mudança tem duas consequências centrais para este trabalho. A primeira é a
-latência: uma chamada que atravessa a rede é mais lenta que uma chamada local,
-pois envolve transmissão, serialização dos dados e cópia entre \textit{buffers}
-\cite{DistributedSystems:2013}. Assim, o custo de cada chamada deixa de ser
-desprezível, e a forma como os serviços se comunicam passa a influenciar
-diretamente o desempenho. A segunda são as falhas parciais: os componentes
-podem falhar de forma independente enquanto os demais continuam em
-funcionamento, e o cliente não consegue distinguir se a ausência de resposta
-vem de uma falha no servidor ou na rede \cite{DistributedSystems:2013}. Por
-isso, o sistema precisa ser projetado para detectar e tolerar falhas, e não
-apenas evitá-las.
+Essa mudança tem duas consequências centrais para este trabalho. A primeira é a latência: uma
+chamada que atravessa a rede é mais lenta que uma chamada local, pois envolve transmissão,
+serialização dos dados e cópia entre buffers \cite{DistributedSystems:2013}. Assim, o
+custo de cada chamada deixa de ser desprezível, e a forma como os serviços se comunicam passa a
+influenciar diretamente o desempenho. A segunda são as falhas parciais: os componentes podem falhar
+de forma independente enquanto os demais continuam em funcionamento, e o cliente não consegue
+distinguir se a ausência de resposta vem de uma falha no servidor ou na rede
+\cite{DistributedSystems:2013}. Por isso, o sistema precisa ser projetado para detectar e tolerar
+falhas, e não apenas evitá-las.
+
+\section{Comunicação síncrona e assíncrona}
+
+A comunicação entre processos pode ser síncrona ou assíncrona. Na comunicação síncrona, as
+operações de envio e de recepção bloqueiam o processo até que a mensagem seja entregue ou
+respondida, enquanto na assíncrona o envio não é bloqueante e o processo de origem prossegue assim
+que a mensagem é copiada para o buffer local \cite{DistributedSystems:2013}. Nos modelos
+cliente-servidor baseados em requisição e resposta, a comunicação é tipicamente síncrona: o cliente
+envia a requisição e aguarda o resultado antes de continuar, e a própria resposta funciona como
+confirmação de que a operação foi concluída \cite{DistributedSystems:2013}.
+
+É importante distinguir, entretanto, o comportamento da chamada do ponto de vista da aplicação dos
+mecanismos internos utilizados pela biblioteca cliente. Nas chamadas síncronas, o processo que
+invoca o método RPC aguarda sua conclusão, seja pelo recebimento da resposta, seja pela ocorrência
+de uma falha. Internamente, porém, a biblioteca pode utilizar mecanismos orientados a eventos para
+acompanhar o progresso da comunicação e gerenciar sua execução. Entre esses mecanismos estão as
+políticas de novas tentativas (\textit{retries}), que permitem à biblioteca realizar novas chamadas após
+determinadas falhas e intervalos de espera, de forma transparente para o chamador
+\cite{gRPC-Retry:2026}. São esses mecanismos, configurados na camada cliente, que constituem o foco
+da Seção~\ref{sec:mecanismos-grpc}.
 
 \section{Chamada de Procedimento Remoto (RPC)}
 
-O RPC é um paradigma de \textit{middleware} que estende a chamada de
-procedimento local para o ambiente distribuído. Ele permite que um cliente
-invoque procedimentos de um servidor remoto com a mesma sintaxe de uma chamada
-local, ocultando detalhes da distribuição, como a codificação e a decodificação
-de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013}.
+O RPC é um paradigma de \textit{middleware} que estende a chamada de  procedimento local para o
+ambiente distribuído. Ele permite que um cliente  invoque procedimentos de um servidor remoto com a
+mesma sintaxe de uma chamada  local, ocultando detalhes da distribuição, como a codificação e a
+decodificação  de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013}.
 
 \begin{figure}[htb]%% Ambiente figure
   %\captionsetup{width=0.55\textwidth}%% Largura da legenda
@@ -53,17 +67,15 @@ de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013
   \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama representando uma chamada RPC.}
 \end{figure}
 
-Essa transparência é viabilizada por um representante local do procedimento
-remoto, chamado \textit{stub} no lado do cliente. A cada
-chamada, ele empacota (\textit{marshalling}) a identificação da operação e seus
-argumentos em uma mensagem de requisição, a envia ao servidor, bloqueia a
-execução do cliente até a chegada da resposta e, por fim, desempacota
-(\textit{unmarshalling}) os resultados ou exceções e os entrega ao código
-chamador \cite{DistributedSystems:2013}. A figura \ref{fig:diagrama-rpc} ilustra o processo, as
-setas tracejadas indicam comunicação interna enquanto as setas sólidas indicam comunicação via
-rede. Esse trabalho representa um custo de
-processamento a cada chamada, que se soma à latência da rede. Embora o RPC
-oculte a distribuição do programador, ele não a elimina: a latência e as falhas
+Essa transparência é viabilizada por um representante local do procedimento remoto, chamado
+\textit{stub} no lado do cliente. A cada chamada, ele empacota (\textit{marshalling}) a
+identificação da operação e seus argumentos em uma mensagem de requisição, a envia ao servidor,
+bloqueia a execução do cliente até a chegada da resposta e, por fim, desempacota
+(\textit{unmarshalling}) os resultados ou exceções e os entrega ao código chamador
+\cite{DistributedSystems:2013}. A figura \ref{fig:diagrama-rpc} ilustra o processo, as setas
+tracejadas indicam comunicação interna enquanto as setas sólidas indicam comunicação via rede. Esse
+trabalho representa um custo de processamento a cada chamada, que se soma à latência da rede.
+Embora o RPC oculte a distribuição do programador, ele não a elimina: a latência e as falhas
 parciais discutidas anteriormente continuam presentes.
 
 \section{gRPC}
@@ -71,22 +83,48 @@ parciais discutidas anteriormente continuam presentes.
 O gRPC é um \textit{framework} de RPC de código aberto no qual um cliente chama um método de um
 servidor em outra máquina como se fosse um objeto local. O serviço é definido de antemão, com os
 métodos que podem ser chamados remotamente e seus tipos de parâmetros e de retorno. O servidor
-implementa essa interface, eo cliente utiliza um \textit{stub} que expõe os mesmos métodos. Além
-das chamadas unárias, em que o cliente envia uma requisição e recebe uma únicaresposta, o gRPC
-oferece \textit{streaming} bidirecional. Para limitar o tempo de espera, o cliente também pode
-definir um \textit{deadline}, a chamada é encerrada com o erro\texttt{DEADLINE\_EXCEEDED} caso ele
-seja excedido \cite{gRPC-Documentation:2026}. Esse recurso é a base dos mecanismos detolerância a
-falhas discutidos adiante, pois evita que um cliente aguarde indefinidamente por um servidor que não responde.
+implementa essa interface, e o cliente utiliza um \textit{stub} que expõe os mesmos métodos. Além
+das chamadas unárias, nas quais o cliente envia uma requisição e recebe apenas uma resposta, o gRPC
+também permite \textit{streaming}: do servidor, do cliente e bidirecional \cite{gRPC-Documentation:2026}.
 
-Por padrão, o gRPC utiliza o \textit{Protocol Buffers} como linguagem de
-definição de interfaces e como formato de serialização das mensagens. O
-\textit{Protocol Buffers} é um mecanismo neutro quanto a linguagem e plataforma,
-extensível, para serializar dados estruturados \cite{Protobuf:2026}. As
-mensagens e os serviços são descritos em arquivos \textit{.proto}, e o
-compilador \textit{protoc}, com o \textit{plugin} do gRPC, gera o código de
-cliente e servidor na linguagem escolhida, o que permite, por exemplo, um
-servidor em Java atender clientes em Go ou Python
-\cite{gRPC-Documentation:2026}. O arquivo \textit{.proto} funciona, assim, como
-um contrato único entre os serviços.
+Por padrão, o gRPC utiliza o \textit{Protocol Buffers} como linguagem de definição de interfaces e
+como formato de serialização das mensagens. O \textit{Protocol Buffers} é um mecanismo neutro
+quanto a linguagem e plataforma, extensível, para serializar dados estruturados
+\cite{Protobuf:2026}. As mensagens e os serviços são descritos em arquivos \texttt{.proto}, e o
+compilador \texttt{protoc}, com o plugin do gRPC, gera o código de cliente e servidor na linguagem
+escolhida \cite{gRPC-Documentation:2026}. O arquivo \texttt{.proto} funciona, assim, como um
+contrato único entre os serviços.
 
-\section{Trabalhos Relacionados}
+\section{HTTP/2}
+
+O HTTP/2 é um protocolo da camada de aplicação que aprimora a comunicação HTTP por meio de recursos
+como o enquadramento binário, a multiplexação de múltiplos fluxos em uma única conexão TCP, a
+compressão de cabeçalhos com HPACK e o controle de fluxo \cite{LearningHTTP2:2017}. O gRPC utiliza
+o HTTP/2 como protocolo de transporte, aproveitando esses recursos para realizar chamadas entre
+cliente e servidor. Além disso, utiliza quadros PING do HTTP/2 em seu mecanismo de
+\textit{keepalive}, que verifica periodicamente se a conexão permanece ativa \cite{gRPC-Keepalive:2026}.
+
+\section{Mecanismos de tolerância a falhas do gRPC}\label{sec:mecanismos-grpc}
+
+O \textit{deadline} permite que o cliente defina quanto tempo está disposto a esperar por uma
+chamada, que é encerrada com o erro \texttt{DEADLINE\_EXCEEDED} ao fim desse prazo. O servidor, por
+sua vez, pode consultar o tempo restante \cite{gRPC-Documentation:2026}. Com isso, o cliente não
+aguarda indefinidamente por um servidor que não responde, e a falha ocorre rapidamente.
+
+Os \textit{retries} reenviam uma chamada que terminou com falha. Eles são configurados por método,
+na configuração de serviço, com o número máximo de tentativas, os parâmetros do \textit{backoff}
+exponencial e os códigos de status que permitem uma nova tentativa. Os \textit{retries} só ocorrem
+dentro do prazo do \textit{deadline} \cite{gRPC-Retry:2026}. Para evitar a sobrecarga do servidor,
+o gRPC também oferece o \textit{retry throttling}: quando a proporção de falhas em relação a
+sucessos passa de um limite, o cliente deixa de retransmitir \cite{gRFC-A6:2024}. O
+\textit{hedging} é a alternativa em que o cliente envia a mesma chamada várias vezes, sem esperar a
+falha da anterior, a cada intervalo definido, e usa a primeira resposta recebida. Uma mesma chamada
+é regida por \textit{retry} ou por \textit{hedging}, nunca pelos dois \cite{gRFC-A6:2024}.
+
+Por fim, o \textit{keepalive} verifica periodicamente se a conexão ainda funciona, enviando quadros
+PING do HTTP/2. Se o par não confirmar o recebimento dentro de um prazo, a conexão é encerrada
+\cite{gRPC-Keepalive:2026}. Por padrão, o \textit{keepalive} é desativado no cliente, e seus
+parâmetros devem estar de acordo com os do servidor, que pode encerrar a conexão de clientes cujos
+\textit{pings} considera excessivos \cite{gRPC-Keepalive:2026}. Em conjunto, esses mecanismos
+trocam capacidade por robustez, pois tentativas adicionais consomem recursos do servidor, e esse
+equilíbrio é o objeto de avaliação deste trabalho.

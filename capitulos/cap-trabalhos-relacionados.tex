@@ -2,13 +2,34 @@
 \chapter{Trabalhos Relacionados}
 \label{cap:trabalhos:relacionados}
 
-Apresente aqui os trabalhos similares ao seu trabalho ou que são importantes para o entendimento do seu trabalho...
+Diversos trabalhos avaliam o gRPC por ângulos diferentes. No campo do desempenho,
+\citeonline{PerformanceEvaluation:2024} compararam REST, GraphQL e gRPC em microsserviços em Go,
+sob 100 a 500 requisições concorrentes, e o gRPC obteve os menores tempos de resposta e o menor uso
+de CPU. \citeonline{Keeps-CaseStudy:2025} relata um caso em que a migração das chamadas síncronas
+internas para gRPC, combinada com cache e outras melhorias, reduziu a latência p50 em
+cerca de 50\% e aumentou a vazão em 114\%. Ambos avaliam apenas desempenho, e o segundo não isola o
+efeito do gRPC.
 
-(ATENÇÃO - )
-\caixa{Atenção}{Veja com o seu orientador se você vai ter este capítulo e se este vai ter nome, talvez ele seja uma seção de outro capítulo...}
+Outros trabalhos examinam o custo de intermediários na comunicação.
+\citeonline{LoadBalancer-Evaluation:2022} mostrou que um proxy L7 no balanceamento de
+carga gRPC adiciona cerca de 1 ms por chamada e consome mais CPU e memória do que o balanceamento
+no cliente. \citeonline{RethinkingRPC:2025} apontam o empilhamento de protocolos e os
+\textit{sidecars} como fontes de latência e consumo de CPU, e propõem uma pilha RPC compilada, com
+descarregamento de funções de rede para eBPF e hardware programável. Esse custo é relevante aqui,
+pois o Envoy também intermedeia as chamadas, mas nenhum dos dois avalia os mecanismos do próprio gRPC.
 
+Por fim, há trabalhos voltados à resiliência. \citeonline{ResilienceBench-Operator:2025} propõem
+uma extensão do Kubernetes que automatiza a avaliação de estratégias de resiliência, com injeção de
+falhas via Envoy em chamadas HTTP e gRPC. \citeonline{FastFI:2026} propõem o FastFI, que
+usa injeção de falhas combinatórias para decidir em quais chamadas aplicar \textit{retries} e
+\textit{fallbacks}, e reduz em mais de 76\% o tempo dos experimentos em relação às soluções
+existentes. Os dois focam nas ferramentas de teste, e não na avaliação de um sistema completo.
 
-TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO TEXTO
+Em resumo, os trabalhos revisados tratam cada um de um aspecto isolado: o desempenho do gRPC, o
+custo de um proxy ou a resiliência sob falhas. Entre eles, nenhum avalia sistematicamente
+os mecanismos nativos do gRPC (\textit{deadlines}, \textit{retries}, \textit{hedging} e
+\textit{keepalive}) sob carga e sob falha, nem seus efeitos conjuntos sobre desempenho, tolerância
+a falhas e segurança. É nessa lacuna que este trabalho se posiciona.
+
 
 %---------------------------------------------------%
-

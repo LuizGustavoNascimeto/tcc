@@ -1,78 +1,76 @@
-%%%% CAPÍTULO 1 - INTRODUÇÃO
-%%
-%% Deve apresentar uma visão global da pesquisa, incluindo: breve
-% histórico, importância e justificativa da escolha do tema,
-%% delimitações do assunto, formulação de hipóteses e objetivos da
-% pesquisa e estrutura do trabalho.
-
-%% Título e rótulo de capítulo (rótulos não devem conter caracteres
-% especiais, acentuados ou cedilha)
 \chapter{Introdução}\label{cap:introducao}
 
-A arquitetura de microsserviços consolidou-se na década de 2010 como alternativa
-às aplicações monolíticas, decompondo o sistema em serviços pequenos e autônomos
-que trabalham em conjunto \cite{BuildingMicroservices:2015}. Cada serviço possui
-responsabilidade bem delimitada e pode ser implantado e escalado de forma
-independente, o que reduz o acoplamento entre equipes e facilita a evolução
-contínua do sistema \cite{MicroserviceArchitecture:2016}. Essa decomposição,
-porém, torna o sistema inerentemente distribuído: chamadas antes locais passam a
-atravessar a rede, trazendo desafios de latência, falhas parciais, consistência
-de dados e segurança na comunicação \cite{BuildingMicroservices:2015}. Assim, a
-arquitetura compensa a complexidade adicional apenas quando o sistema é grande o
-bastante para se beneficiar de sua escalabilidade e autonomia.
+A arquitetura de microsserviços consolidou-se na década de 2010 como alternativa às aplicações
+monolíticas, decompondo o sistema em serviços pequenos e autônomos que trabalham em conjunto
+\cite{BuildingMicroservices:2015}. Cada serviço possui responsabilidade bem delimitada e pode ser
+implantado e escalado de forma independente, o que reduz o acoplamento entre equipes e facilita a
+evolução contínua do sistema \cite{MicroserviceArchitecture:2016}. Essa decomposição, porém, torna
+o sistema inerentemente distribuído: chamadas antes locais passam a atravessar a rede, trazendo
+desafios de latência, falhas parciais, consistência de dados e segurança na comunicação
+\cite{BuildingMicroservices:2015}. Assim, a arquitetura compensa a complexidade adicional apenas
+quando o sistema é grande o bastante para se beneficiar de sua escalabilidade e autonomia.
 
-Nesse cenário, a escolha do mecanismo de comunicação entre serviços torna-se
-uma decisão arquitetural central. Entre as alternativas, destaca-se o
-RPC, que permite invocar procedimentos em
-outro serviço como se fossem locais. O gRPC é uma das implementações mais
-difundidas desse modelo: utiliza o HTTP/2 como protocolo de transporte e o
-\textit{Protocol Buffers} como formato de serialização e linguagem de definição
-de interfaces \cite{gRPC-Introduction:2026}. Em ambientes de produção, ele costuma ser
-combinado com \textit{proxies} como o Envoy e com malhas de serviço
-(\textit{service meshes}) como o Istio, que adicionam balanceamento de carga,
-criptografia e observabilidade.
+Nesse cenário, a escolha do mecanismo de comunicação entre serviços torna-se uma decisão
+arquitetural central. Entre as alternativas, destaca-se o RPC, que permite invocar procedimentos em
+outro serviço como se fossem locais. O gRPC é uma das implementações mais difundidas desse modelo:
+utiliza o HTTP/2 como protocolo de transporte e o \textit{Protocol Buffers} como formato de
+serialização e linguagem de definição de interfaces \cite{gRPC-Introduction:2026}. Em ambientes de
+produção, ele costuma ser usado com o Envoy, um proxy que intermedeia o tráfego entre os serviços
+\cite{Envoy-Documentation:2026}.
 
+Para lidar com a latência e as falhas parciais da comunicação, o gRPC oferece mecanismos nativos e
+configuráveis: os \textit{deadlines} limitam o tempo de espera de uma chamada, os \textit{retries}
+reenviam chamadas que falham, o \textit{hedging} envia cópias da mesma chamada em paralelo e o
+\textit{keepalive} detecta conexões interrompidas \cite{gRPC-Documentation:2026}. Esses mecanismos,
+porém, não são gratuitos: cada tentativa adicional consome capacidade do servidor, e uma
+configuração inadequada pode sobrecarregá-lo em vez de protegê-lo \cite{gRFC-A6:2024}.
 
 \section{Problema de Pesquisa}
 
-A popularidade do gRPC faz com que ele seja frequentemente adotado como escolha
-padrão, muitas vezes com base em sua reputação de eficiência. Embora existam comparações isoladas de
-desempenho entre protocolos \cite{PerformanceEvaluation:2024}, é menos comum encontrar
-avaliações que examinem, de forma conjunta e em um cenário realista, atributos
-que frequentemente competem entre si: desempenho, disponibilidade, segurança e
-tolerância a falhas. Medidas de segurança, como a criptografia mútua entre
-serviços, e mecanismos de resiliência, como \textit{retries} e
-\textit{circuit breakers}, por exemplo, introduzem custos que afetam o
-desempenho.
+A popularidade do gRPC faz com que ele seja frequentemente adotado como escolha padrão, muitas
+vezes com base em sua reputação de eficiência. Embora existam comparações de desempenho entre
+protocolos \cite{PerformanceEvaluation:2024}, o comportamento dos mecanismos que o próprio gRPC
+oferece para tolerar falhas é menos avaliado. Esses mecanismos têm custos em desempenho e em
+capacidade, e também podem se tornar um risco de segurança: retransmissões e prazos de execução mal
+configurados permitem ataques que amplificam a carga sobre o servidor \cite{TODO-ataques}. Os
+estudos existentes tendem a isolar um aspecto, seja o desempenho do protocolo, o custo de um proxy
+\cite{LoadBalancer-Evaluation:2022, RethinkingRPC:2025} ou a resiliência sob falhas
+\cite{ResilienceBench-Operator:2025}, o que deixa em aberto como os mecanismos nativos do gRPC se
+comportam quando o sistema está sob carga e sob falha ao mesmo tempo.
 
-Diante disso, a pergunta que orienta este trabalho é: como se comporta
-um sistema de microsserviços construído com gRPC quando avaliado
-simultaneamente quanto ao desempenho, à disponibilidade, à segurança e à
-tolerância a falhas, e até que ponto de carga ele mantém esse comportamento?
+Diante disso, a pergunta que orienta este trabalho é: como se comportam os mecanismos nativos do
+gRPC (\textit{deadlines}, \textit{retries}, \textit{hedging} e \textit{keepalive}) em um sistema de
+microsserviços semelhante a um ambiente de produção, quanto ao desempenho, à tolerância a falhas e
+à segurança, e até que nível de carga esse comportamento se mantém?
 
 \section{Objetivos}
 
-O objetivo geral deste trabalho é avaliar empiricamente o gRPC em um cenário de marketplace. ara
-alcançá-lo, definem-se os seguintes objetivos específicos:
+O objetivo geral deste trabalho é avaliar empiricamente os mecanismos nativos do gRPC para
+tolerância a falhas em um cenário de \textit{marketplace}.
+
+Para alcançá-lo, definem-se os seguintes objetivos específicos:
 
 \begin{itemize}
   \item projetar e implementar um sistema de microsserviços em Go, com gRPC e
     \textit{Protocol Buffers}, inspirado no \textit{system design} de um
     \textit{marketplace} de comércio eletrônico;
-  \item aplicar a malha de serviço (\textit{service mesh}) Istio ao sistema, para
-    prover segurança, resiliência e disponibilidade;
+  \item configurar os \textit{deadlines}, \textit{retries}, \textit{hedging} e
+    \textit{keepalive} do gRPC em configurações progressivas, para comparar o
+    efeito de cada mecanismo;
   \item mensurar o desempenho sob carga por meio da latência (percentis p50, p90
     e p99), da vazão (\textit{throughput}) e da saturação dos recursos de
     hardware (CPU e memória);
-  \item avaliar a disponibilidade e a tolerância a falhas em cenários de falha
-    induzida, por meio do tempo médio de recuperação (MTTR) e da taxa de
-    erros observada durante a falha;
-  \item analisar a segurança do sistema, considerando a superfície de ataque, a
-    exposição a riscos e as vulnerabilidades conhecidas nas tecnologias
-    empregadas;
-  \item encontrar o ponto de ruptura do sistema, ou seja, o nível de carga em que
-    ele deixa de atender aos critérios de desempenho e disponibilidade definidos
-    para o experimento.
+  \item avaliar a tolerância a falhas em cenários de falha induzida, por meio do
+    tempo médio de recuperação (\textit{Mean Time To Recovery}, MTTR) e da taxa
+    de erros, e calcular a disponibilidade resultante como a proporção de
+    requisições bem-sucedidas;
+  \item analisar a segurança do sistema, considerando o uso de TLS do gRPC, a
+    superfície de ataque, as vulnerabilidades conhecidas nas tecnologias
+    empregadas e o risco de amplificação de carga por \textit{retries} e
+    \textit{deadlines};
+  \item encontrar o ponto de ruptura do sistema sem mecanismos e com todos os
+    mecanismos do gRPC, ou seja, o nível de carga em que ele deixa de atender aos
+    critérios de desempenho definidos para o experimento.
 \end{itemize}
 
 \section{Justificativa}
@@ -81,21 +79,21 @@ Sistemas de comércio eletrônico impõem requisitos exigentes: precisam escalar
 diante de picos de demanda, permanecer disponíveis, tolerar falhas de
 componentes e proteger dados sensíveis de clientes e pagamentos. Por reunir
 todos esses requisitos, o \textit{marketplace} é um cenário adequado para
-examinar, de forma integrada, o comportamento do gRPC em microsserviços.
+examinar o comportamento do gRPC em microsserviços.
 
 Do ponto de vista prático, os resultados podem apoiar desenvolvedores,
-arquitetos e engenheiros de software na decisão de adotar o gRPC, indicando
-seus ganhos e custos em cada atributo de qualidade. Do ponto de vista
-acadêmico, o trabalho reúne em um único experimento reproduzível dimensões que
-normalmente são tratadas separadas na literatura, contribuindo para uma visão
-consolidada da área.
+arquitetos e engenheiros de software na configuração dos mecanismos do gRPC,
+indicando seus ganhos e custos. Do ponto de vista acadêmico, o trabalho reúne em
+um único experimento reproduzível dimensões que normalmente são tratadas
+separadamente na literatura.
 
 \section{Organização do Texto}
 
-Este trabalho está organizado em cinco capítulos, incluindo esta introdução. O
-Capítulo~\ref{cap:fundamentacaoTeorica} apresenta a fundamentação teórica, com
-os conceitos necessários para o entendimento do trabalho. Com base neles, o
-Capítulo~\ref{cap:proposta} descreve a proposta de implementação do sistema e a
-forma como ele será avaliado. Em seguida, o
+Este trabalho está organizado em seis capítulos, incluindo esta introdução. O
+Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos necessários para
+o entendimento do trabalho. O Capítulo~\ref{cap:trabalhos:relacionados} discute
+os trabalhos relacionados e a lacuna que este trabalho busca preencher. Com base
+neles, o Capítulo~\ref{cap:proposta} descreve a proposta de implementação do
+sistema e a forma como ele será avaliado. Em seguida, o
 Capítulo~\ref{cap:resultados} apresenta e discute os resultados dos
 experimentos. Por fim, o Capítulo~\ref{cap:conclusao} reúne as conclusões.

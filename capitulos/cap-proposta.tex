@@ -1,9 +1,177 @@
-% ATENÇÃO - veja com o seu orientador se você vai ter este capítulo e se este vai ter nome!
-\chapter{Proposta}
-\label{cap:proposta}
 
-\section{Proposta de Implementação}
-\lipsum[1]
+\chapter{Proposta}\label{cap:proposta}
 
+Este capítulo descreve o sistema a ser implementado, o ambiente do experimento,
+as configurações dos mecanismos do gRPC que serão comparadas e a forma como o
+desempenho, a tolerância a falhas, a segurança e o ponto de ruptura serão
+avaliados.
 
+\section{Sistema a ser implementado}
 
+O sistema é um \textit{marketplace} de comércio eletrônico em Go, composto por
+cinco serviços (inventário, busca, compra, pagamento simulado e usuários)
+atrás de um \textit{gateway}. A comunicação entre os serviços usa gRPC e
+\textit{Protocol Buffers}, e o Envoy atua como proxy e balanceador de
+carga entre eles, com suas políticas próprias de \textit{retry}, \textit{timeout}
+e \textit{circuit breaking} desabilitadas, de modo que o efeito observado seja
+atribuído aos mecanismos do gRPC. Os mecanismos são configurados nos clientes
+gRPC dos serviços, e as chamadas são unárias.
+
+Três fluxos de negócio compõem a carga: gerenciar o inventário, buscar itens e
+comprar. A compra é o fluxo central, pois é uma transação distribuída (bloqueio
+  do carrinho, atualização de estoque e pagamento, com \textit{rollback} em caso
+de falha) que atravessa vários serviços. Ela gera a cadeia de chamadas mais
+profunda e é o ponto natural para a injeção de falhas.
+
+A persistência usa três tecnologias. O PostgreSQL armazena os dados transacionais de compras,
+usuários e pagamentos, e o MongoDB armazena o inventário e as solicitações de compra
+(\textit{tickets}). Em vez de uma instância por serviço, cada tecnologia tem uma única instância
+compartilhada, com esquemas ou coleções separados por serviço, de modo que um serviço não acessa os
+dados de outro. Essa escolha reduz o consumo de memória na VPS e mantém a comunicação entre os
+serviços restrita ao gRPC. O Redis é usado de duas formas: como cache de leitura do
+inventário, que reduz a carga do MongoDB nas operações de busca, e como \textit{lock} distribuído
+com TTL, que bloqueia os itens do carrinho durante a compra e evita que um bloqueio fique preso
+caso o serviço falhe antes de liberá-lo.
+
+\section{Infraestrutura e ambiente}
+
+O experimento roda em duas VPS da Contabo com Ubuntu 24.04, cada uma com 4 vCPUs e 8~GB de memória.
+Uma executa o sistema, e a outra executa a geração de carga (k6) e a observabilidade (Prometheus e
+Grafana), de modo que o gerador de carga não compete por recursos com o sistema testado. As
+métricas do sistema são coletadas pelo Prometheus, e as métricas do lado do cliente, pelo k6. As
+versões de Go, gRPC-Go e Envoy serão fixadas na implementação do sistema. Para garantir a
+reprodutibilidade, o código e os arquivos de configuração serão publicados em um repositório no GitHub.
+
+Os serviços, os bancos de dados e o Envoy são orquestrados com o Kubernetes, na distribuição leve
+k3s, em um único nó na VPS do sistema. Cada componente executa em um pod com limites de
+CPU e memória definidos nos manifestos, e o Kubernetes também é a base da injeção de falhas
+(Seção~\ref{sec:falhas}). Os manifestos fazem parte do repositório publicado.
+
+\section{Configurações experimentais}
+
+A hipótese central do trabalho é que os mecanismos nativos do gRPC contribuem
+para a resiliência e a disponibilidade do sistema, mas com custos que variam
+conforme a carga e o tipo de falha. Para avaliá-la, o sistema é executado em
+cinco configurações progressivas dos mecanismos (Tabela~\ref{tab:configuracoes}).
+O \textit{keepalive} é também variado nos cenários de falha de conexão. Como o
+gRPC não permite que um \textit{retry} e o \textit{hedging} regam a mesma
+chamada \cite{gRFC-A6}, a configuração completa aplica cada um a métodos
+diferentes.
+
+\begin{table}[htb]
+  \centering
+  \caption{Configurações comparadas}\label{tab:configuracoes}
+  \begin{tabular}{lcccc}
+    \hline
+    Configuração & \textit{Deadlines} & \textit{Retries} & \textit{Hedging} & \textit{Keepalive} \\
+    \hline
+    (a) sem mecanismos & não & não & não & não \\
+    (b) \textit{deadlines} & sim & não & não & não \\
+    (c) \textit{retries}   & sim & sim & não & não \\
+    (d) \textit{hedging}   & sim & não & sim & não \\
+    (e) completa           & sim & sim & sim & sim \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Os \textit{deadlines} valem o dobro do tempo médio de resposta de cada serviço
+em operação normal. Nos \textit{retries}, o número máximo de tentativas é 4 (a
+original mais três retentativas), com o \textit{backoff} exponencial do gRPC.
+
+Os \textit{retries} são acionados apenas pelo código \texttt{UNAVAILABLE}, que indica falha
+transitória, com \textit{backoff} inicial de 100~ms, máximo de 1~s e multiplicador 2. O
+\textit{retry throttling} é usado nas configurações (c) e (e), com \texttt{maxTokens} igual a 10 e
+\texttt{tokenRatio} igual a 0,1. No \textit{hedging}, o atraso entre as chamadas é aproximadamente o
+p95 do tempo de resposta do serviço em operação normal, o número máximo de tentativas é 3 e o
+código \texttt{UNAVAILABLE} é tratado como falha não fatal, de modo que as demais chamadas
+continuam em andamento. No \textit{keepalive}, o cliente envia um \textit{ping} a cada 10~s e
+encerra a conexão se não houver confirmação em 3~s, inclusive sem chamadas ativas, e o servidor é
+configurado para aceitar \textit{pings} com intervalo mínimo compatível. Como os \textit{retries}
+e o \textit{hedging} podem duplicar o efeito de operações de escrita, as escritas da compra e do
+pagamento carregam uma chave de idempotência, e o serviço descarta a execução repetida de uma
+mesma chave. Assim, esses mecanismos podem ser aplicados também a elas. Esses valores são
+iniciais e podem ser ajustados na implementação, sendo registrados no repositório.
+
+\section{Avaliação de desempenho}
+
+A carga é gerada com o k6, que suporta gRPC e o fluxo composto da compra, com
+90\% de operações de leitura e 10\% de escrita. A carga segue um modelo fechado
+(usuários concorrentes), tanto constante quanto crescente. Cada execução tem 60
+segundos de \textit{warm-up} e 10 minutos de medição. As métricas são a latência
+(p50, p90 e p99) e a vazão, coletadas pelo k6 e pelo Prometheus, e o uso de CPU
+e memória, coletado pelo Prometheus.
+
+\section{Tolerância a falhas e disponibilidade}\label{sec:falhas}
+
+As falhas são injetadas nos serviços periféricos, com o sistema sob carga
+crescente, para verificar se o sistema se mantém disponível diante de uma falha
+parcial. Os tipos de falha são escolhidos para exercitar cada mecanismo:
+latência artificial (\textit{deadlines}), erros de indisponibilidade
+(\textit{retries}), lentidão de cauda (\textit{hedging}) e queda de conexão
+(\textit{keepalive}).
+
+As falhas são injetadas com o Chaos Mesh, que opera sobre os pods do Kubernetes. A
+latência artificial e a lentidão de cauda são produzidas com o \texttt{NetworkChaos}, que adiciona
+atraso e variação (\textit{jitter}) ao tráfego do serviço alvo. A indisponibilidade e a queda de
+conexão são produzidas com o \texttt{PodChaos} (falha ou reinício do pod) e com o
+\texttt{NetworkChaos} (perda de pacotes e partição de rede). Cada experimento define a duração e o
+momento da injeção em um manifesto versionado, o que permite repeti-lo nas cinco configurações.
+
+O MTTR é medido da seguinte forma. A falha é considerada iniciada quando a taxa
+de requisições com erro ultrapassa um limiar, definido a partir das métricas
+obtidas em momentos de pico de carga, e é considerada resolvida quando o sistema
+volta a responder dentro desse limiar por 10 segundos consecutivos. A
+disponibilidade é a proporção de requisições bem-sucedidas em relação ao total.
+
+\section{Análise de segurança}
+
+A segurança é avaliada em três frentes. A primeira é o uso do TLS do gRPC na
+comunicação entre os serviços. A segunda é a superfície de ataque (portas
+expostas e \textit{endpoints} acessíveis) e as vulnerabilidades conhecidas nas
+dependências, buscadas com o Docker Scout e o \texttt{govulncheck}. A terceira é
+o efeito de amplificação de carga causado pelos \textit{retries} e pelo
+\textit{hedging}, medido em cada configuração pela razão entre as chamadas
+recebidas pelos serviços e as chamadas originadas pelos clientes. Este trabalho
+mede esse efeito, mas não executa ataques.
+
+Para organizar a análise, é construído um modelo de ameaças com o STRIDE, que classifica as
+ameaças em falsificação de identidade, adulteração, repúdio, divulgação de informação, negação de
+serviço e elevação de privilégio. O modelo é aplicado aos componentes do sistema e às fronteiras de
+confiança entre o \textit{gateway}, os serviços, os bancos de dados e o Redis, e cada ameaça é
+associada ao controle que a mitiga ou à avaliação deste trabalho que a cobre. A negação de serviço
+recebe atenção especial, pois os \textit{retries} e o \textit{hedging} podem ampliar a carga sobre
+os serviços.
+
+\section{Ponto de ruptura}
+
+O ponto de ruptura é buscado nas configurações (a) e (e), para comparar o
+sistema sem mecanismos com o sistema com todos eles. A carga é aumentada em
+rampa, de 100 requisições por segundo a cada 10 segundos, até que o sistema
+deixe de atender aos critérios: p99 acima de 500~ms ou taxa de erro acima de
+1\%. O gargalo é identificado pelas métricas de CPU, memória, rede e latência
+do Prometheus e do k6.
+
+\section{Análise dos dados e cronograma}
+
+Os resultados são analisados por médias e intervalos de confiança e apresentados
+em tabelas e gráficos. Entre as ameaças à validade, o sistema é uma aplicação
+que apenas se parece com um sistema de produção: seus requisitos têm
+semelhanças com os reais, mas há muitos outros requisitos e implementações em
+ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
+
+\begin{table}[htb]
+  \centering
+  \caption{Cronograma}\label{tab:cronograma}
+  \begin{tabular}{ll}
+    \hline
+    Data & Etapa \\
+    \hline
+    02/12/2026 & Apresentação do TCC01 \\
+    28/02/2027 & Implementação do sistema \\
+    15/03/2027 & Instrumentação do sistema \\
+    30/03/2027 & Experimentos \\
+    13/04/2027 & Análise dos resultados e escrita do TCC02 \\
+    19/04/2027 & Apresentação do TCC02 \\
+    \hline
+  \end{tabular}
+\end{table}
