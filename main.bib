@@ -23,6 +23,41 @@
   url           = {https://doi.org/10.1145/3813806},
   urlaccessdate = {11 nov. 2026}
 }
+@article{gRPC-Security-Proxy:2025,
+  author     = {Thiyagarajan, Gogulakrishnan and Bist, Vinay and Nayak, Prabhudarshi},
+  title      = { Strengthening gRPC Security in Microservices: A Proxy-based Approach for mTLS, JWT, and RBAC Enforcement },
+  journal    = { International Journal of Computer Applications },
+  issue_date = { Aug 2025 },
+  volume     = { 187 },
+  number     = { 28 },
+  month      = { Aug },
+  year       = { 2025 },
+  issn       = { 0975-8887 },
+  pages      = { 1-17 },
+  numpages   = {9},
+  url        = { https://ijcaonline.org/archives/volume187/number28/strengthening-grpc-security-in-microservices-a-proxy-based-approach-for-mtls-jwt-and-rbac-enforcement/ },
+  doi        = { 10.5120/ijca2025925359 },
+  publisher  = {Foundation of Computer Science (FCS), NY, USA},
+  address    = {New York, USA}
+}
+
+@inproceedings{Retry-Experiment:2023,
+  author    = {Aderaldo, Carlos Mendes and Mendonca, Nabor Das Chagas},
+  title     = {How The Retry Pattern Impacts Application Performance: A Controlled Experiment},
+  year      = {2023},
+  isbn      = {9798400707872},
+  publisher = {Association for Computing Machinery},
+  address   = {New York, NY, USA},
+  url       = {https://doi.org/10.1145/3613372.3613409},
+  doi       = {10.1145/3613372.3613409},
+  abstract  = {Distributed application developers typically use resiliency patterns like Retry, Circuit Breaker, and Fail Fast for handling remote service failures. However, limited research exists on how these patterns may impact performance across various operational conditions. This paper presents a controlled experiment assessing the performance of over 100 Retry pattern configurations in Java and C# using Resilience4j and Polly libraries, under different workloads and failure rates. Our experimental results indicate increasing any of the three Retry parameters investigated (i.e., the initial backoff delay, the backoff delay multiplier, and the maximum number of retries) reduces response time but raises execution time, with effects intensifying exponentially as failure rates grow. An analysis using a state-of-the-art model explainer reveals the initial backoff delay’s impact is twice that of other parameters at low to moderate failure rates, with more balanced effects at high rates. These findings apply to both Resilience4j and Polly, with Polly’s impact being slightly higher due to subtle implementation differences. Our results can benefit both distributed application developers and researchers. Developers can learn from our findings to tailor the Retry pattern to their applications’ needs. Researchers can expand upon our work to enhance our collective understanding of resiliency patterns’ impact and implications.},
+  booktitle = {Proceedings of the XXXVII Brazilian Symposium on Software Engineering},
+  pages     = {47–56},
+  numpages  = {10},
+  keywords  = {controlled experiment, performance analysis, retry pattern},
+  location  = {Campo Grande, Brazil},
+  series    = {SBES '23}
+} 
 
 @inproceedings{RethinkingRPC:2025,
   author        = {Zhu, Xiangfeng and Zhou, Yang and Wang, Yuyao and Gao, Xiangyu and Krishnamurthy, Arvind and Kumar, Sam and Mahajan, Ratul and Zhuo, Danyang},
@@ -121,17 +156,6 @@
   isbn      = {978-85-8260-053-5}
 }
 
-@manual{UTFPR2008,
-  title         = {Orienta{\c c}{\~a}o para a entrega de trabalhos acad{\^e}micos},
-  author        = {{UTFPR}},
-  organization  = {Universidade Tecnol{\'o}gica Federal do Paran{\'a}},
-  address       = {Curitiba},
-  edition       = {1},
-  year          = {2021},
-  url           = {http://www.utfpr.edu.br/biblioteca/trabalhos-academicos/discentes},
-  urlaccessdate = {08 nov. 2021}
-}
-
 @manual{gRPC-Documentation:2026,
   author        = {{gRPC}},
   title         = {{gRPC} Documentation},
@@ -197,6 +221,17 @@
   year          = {2022},
   url           = {https://systemdesign.one/system-design-interview-cheatsheet/},
   urlaccessdate = {08 nov. 2026}
+}
+
+@misc{gRPC-Security:2026,
+  author        = {James Newton-King},
+  title         = {Considerações de segurança no gRPC para ASP.NET Core},
+  year          = {2026},
+  date          = {2026-11-16},
+  url           = {https://learn.microsoft.com/pt-br/aspnet/core/grpc/security?view=aspnetcore-11.0&preserve-view=true},
+  organization  = {Microsoft},
+  note          = {Última atualização em 16 nov. 2026},
+  urlaccessdate = {11 nov. 2026}
 }
 
 @techreport{gRFC-A6:2024,

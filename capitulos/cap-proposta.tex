@@ -23,15 +23,27 @@ comprar. A compra é o fluxo central, pois é uma transação distribuída (bloq
 de falha) que atravessa vários serviços. Ela gera a cadeia de chamadas mais
 profunda e é o ponto natural para a injeção de falhas.
 
-A persistência usa três tecnologias. O PostgreSQL armazena os dados transacionais de compras,
-usuários e pagamentos, e o MongoDB armazena o inventário e as solicitações de compra
-(\textit{tickets}). Em vez de uma instância por serviço, cada tecnologia tem uma única instância
-compartilhada, com esquemas ou coleções separados por serviço, de modo que um serviço não acessa os
-dados de outro. Essa escolha reduz o consumo de memória na VPS e mantém a comunicação entre os
-serviços restrita ao gRPC. O Redis é usado de duas formas: como cache de leitura do
-inventário, que reduz a carga do MongoDB nas operações de busca, e como \textit{lock} distribuído
-com TTL, que bloqueia os itens do carrinho durante a compra e evita que um bloqueio fique preso
-caso o serviço falhe antes de liberá-lo.
+
+Os dados ficam em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O
+inventário e as requisições de compra (\textit{tickets}) ficam no MongoDB (NoSQL), e os pedidos de
+compra, os pagamentos e os usuários ficam no PostgreSQL (SQL). Cada banco tem uma única instância,
+com esquemas ou coleções separados por serviço. Além deles, o sistema usa o Redis, um banco de dados
+em memória, como cache do inventário nas buscas e como \textit{lock} distribuído com TTL durante a
+compra, o que evita um bloqueio preso se o serviço falhar.
+
+\begin{figure}[htb]%% Ambiente figure
+  %\captionsetup{width=0.55\textwidth}%% Largura da legenda
+  \caption{Diagrama do banco de dados dividido em NoSQL e SQL}%% Legenda
+  \label{fig:diagrama-banco-de-dados}%% Rótulo
+  \includegraphics[width=\textwidth]{schema-db.png}%% Dimensões e localização
+  % Dimensões e localização
+  \fonte{Adaptado de \citeonline[]{SDInterview:2022}}%% Fonte
+  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama do banco de dados dividido em NoSQL e SQL.}
+\end{figure}
+
+Um item do inventário gera várias requisições (1:N), e várias requisições compõem um pedido de
+compra (N:1). Cada pedido tem um pagamento (1:1) e pertence a um usuário (N:1).
+
 
 \section{Infraestrutura e ambiente}
 
@@ -55,7 +67,7 @@ conforme a carga e o tipo de falha. Para avaliá-la, o sistema é executado em
 cinco configurações progressivas dos mecanismos (Tabela~\ref{tab:configuracoes}).
 O \textit{keepalive} é também variado nos cenários de falha de conexão. Como o
 gRPC não permite que um \textit{retry} e o \textit{hedging} regam a mesma
-chamada \cite{gRFC-A6}, a configuração completa aplica cada um a métodos
+chamada \cite{gRFC-A6:2024}, a configuração completa aplica cada um a métodos
 diferentes.
 
 \begin{table}[htb]
@@ -73,6 +85,8 @@ diferentes.
     \hline
   \end{tabular}
 \end{table}
+
+%% usar uma fonte menor e um asterísico sobrescrito
 
 Os \textit{deadlines} valem o dobro do tempo médio de resposta de cada serviço
 em operação normal. Nos \textit{retries}, o número máximo de tentativas é 4 (a
@@ -162,16 +176,30 @@ ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
 \begin{table}[htb]
   \centering
   \caption{Cronograma}\label{tab:cronograma}
-  \begin{tabular}{ll}
+  \begin{tabular}{lccccc}
     \hline
-    Data & Etapa \\
+    Atividade & 2026 & \multicolumn{4}{c}{2027} \\
+    \cline{2-2}\cline{3-6}
+     & dez. & jan. & fev. & mar. & abr. \\
     \hline
-    02/12/2026 & Apresentação do TCC01 \\
-    28/02/2027 & Implementação do sistema \\
-    15/03/2027 & Instrumentação do sistema \\
-    30/03/2027 & Experimentos \\
-    13/04/2027 & Análise dos resultados e escrita do TCC02 \\
-    19/04/2027 & Apresentação do TCC02 \\
+    Apresentação do TCC01 & X &  &  &  &  \\
+    Implementação do sistema & X & X & X &  &  \\
+    Instrumentação do sistema &  &  &  & X &  \\
+    Experimentos &  &  &  & X &  \\
+    Análise dos resultados e escrita do TCC02 &  &  &  &  & X \\
+    Apresentação do TCC02 &  &  &  &  & X \\
     \hline
   \end{tabular}
 \end{table}
+
+
+%% FLuxo de trabalho para completar os passos
+
+%%Na proposta tem que ser o mais específico
+
+
+
+%% ameaças a viabilidade
+4=%% reconsiderações financais para reto
+
+

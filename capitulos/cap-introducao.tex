@@ -32,7 +32,7 @@ vezes com base em sua reputação de eficiência. Embora existam comparações d
 protocolos \cite{PerformanceEvaluation:2024}, o comportamento dos mecanismos que o próprio gRPC
 oferece para tolerar falhas é menos avaliado. Esses mecanismos têm custos em desempenho e em
 capacidade, e também podem se tornar um risco de segurança: retransmissões e prazos de execução mal
-configurados permitem ataques que amplificam a carga sobre o servidor \cite{TODO-ataques}. Os
+configurados permitem ataques que amplificam a carga sobre o servidor \cite{Retry-Experiment:2023}. Os
 estudos existentes tendem a isolar um aspecto, seja o desempenho do protocolo, o custo de um proxy
 \cite{LoadBalancer-Evaluation:2022, RethinkingRPC:2025} ou a resiliência sob falhas
 \cite{ResilienceBench-Operator:2025}, o que deixa em aberto como os mecanismos nativos do gRPC se
@@ -43,6 +43,8 @@ gRPC (\textit{deadlines}, \textit{retries}, \textit{hedging} e \textit{keepalive
 microsserviços semelhante a um ambiente de produção, quanto ao desempenho, à tolerância a falhas e
 à segurança, e até que nível de carga esse comportamento se mantém?
 
+
+%Falar mais sobre os outros objetivos a serem alcançados (segurança por exemplo).
 \section{Objetivos}
 
 O objetivo geral deste trabalho é avaliar empiricamente os mecanismos nativos do gRPC para
@@ -67,33 +69,23 @@ Para alcançá-lo, definem-se os seguintes objetivos específicos:
   \item analisar a segurança do sistema, considerando o uso de TLS do gRPC, a
     superfície de ataque, as vulnerabilidades conhecidas nas tecnologias
     empregadas e o risco de amplificação de carga por \textit{retries} e
-    \textit{deadlines};
-  \item encontrar o ponto de ruptura do sistema sem mecanismos e com todos os
-    mecanismos do gRPC, ou seja, o nível de carga em que ele deixa de atender aos
-    critérios de desempenho definidos para o experimento.
+    \textit{deadlines}.
 \end{itemize}
 
 \section{Justificativa}
 
-Sistemas de comércio eletrônico impõem requisitos exigentes: precisam escalar
-diante de picos de demanda, permanecer disponíveis, tolerar falhas de
-componentes e proteger dados sensíveis de clientes e pagamentos. Por reunir
-todos esses requisitos, o \textit{marketplace} é um cenário adequado para
-examinar o comportamento do gRPC em microsserviços.
-
-Do ponto de vista prático, os resultados podem apoiar desenvolvedores,
-arquitetos e engenheiros de software na configuração dos mecanismos do gRPC,
-indicando seus ganhos e custos. Do ponto de vista acadêmico, o trabalho reúne em
-um único experimento reproduzível dimensões que normalmente são tratadas
-separadamente na literatura.
+Os mecanismos do gRPC são usados com frequência, mas seu custo e seu efeito sob carga e sob falha
+raramente são medidos em conjunto. Este trabalho mede esses efeitos em um único sistema, com
+desempenho, tolerância a falhas e segurança avaliados nas mesmas condições. O
+\textit{marketplace} foi escolhido porque a compra é uma transação distribuída que atravessa vários
+serviços, o que permite observar o efeito dos mecanismos em uma cadeia de chamadas.
 
 \section{Organização do Texto}
 
 Este trabalho está organizado em seis capítulos, incluindo esta introdução. O
-Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos necessários para
-o entendimento do trabalho. O Capítulo~\ref{cap:trabalhos:relacionados} discute
-os trabalhos relacionados e a lacuna que este trabalho busca preencher. Com base
-neles, o Capítulo~\ref{cap:proposta} descreve a proposta de implementação do
-sistema e a forma como ele será avaliado. Em seguida, o
-Capítulo~\ref{cap:resultados} apresenta e discute os resultados dos
-experimentos. Por fim, o Capítulo~\ref{cap:conclusao} reúne as conclusões.
+Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos necessários para o entendimento do
+trabalho. O Capítulo~\ref{cap:trabalhos:relacionados} discute os trabalhos relacionados e a lacuna
+que este trabalho busca preencher. Com base neles, o Capítulo~\ref{cap:proposta} descreve a
+proposta de implementação do sistema e a forma como ele será avaliado. Em seguida, o
+Capítulo~\ref{cap:resultados} apresenta e discute os resultados dos experimentos. Por fim, o
+Capítulo~\ref{cap:conclusao} reúne as conclusões.
