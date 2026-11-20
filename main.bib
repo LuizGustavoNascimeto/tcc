@@ -50,7 +50,6 @@
   address   = {New York, NY, USA},
   url       = {https://doi.org/10.1145/3613372.3613409},
   doi       = {10.1145/3613372.3613409},
-  abstract  = {Distributed application developers typically use resiliency patterns like Retry, Circuit Breaker, and Fail Fast for handling remote service failures. However, limited research exists on how these patterns may impact performance across various operational conditions. This paper presents a controlled experiment assessing the performance of over 100 Retry pattern configurations in Java and C# using Resilience4j and Polly libraries, under different workloads and failure rates. Our experimental results indicate increasing any of the three Retry parameters investigated (i.e., the initial backoff delay, the backoff delay multiplier, and the maximum number of retries) reduces response time but raises execution time, with effects intensifying exponentially as failure rates grow. An analysis using a state-of-the-art model explainer reveals the initial backoff delay’s impact is twice that of other parameters at low to moderate failure rates, with more balanced effects at high rates. These findings apply to both Resilience4j and Polly, with Polly’s impact being slightly higher due to subtle implementation differences. Our results can benefit both distributed application developers and researchers. Developers can learn from our findings to tailor the Retry pattern to their applications’ needs. Researchers can expand upon our work to enhance our collective understanding of resiliency patterns’ impact and implications.},
   booktitle = {Proceedings of the XXXVII Brazilian Symposium on Software Engineering},
   pages     = {47–56},
   numpages  = {10},
@@ -231,6 +230,14 @@
   url           = {https://learn.microsoft.com/pt-br/aspnet/core/grpc/security?view=aspnetcore-11.0&preserve-view=true},
   organization  = {Microsoft},
   note          = {Última atualização em 16 nov. 2026},
+  urlaccessdate = {11 nov. 2026}
+}
+@misc{OWASP-gRPC-Security:2026,
+  author        = {{OWASP Cheat Sheet Series Team}},
+  title         = {{gRPC Security Cheat Sheet}},
+  year          = {2026},
+  organization  = {{OWASP Foundation}},
+  url           = {https://cheatsheetseries.owasp.org/cheatsheets/gRPC_Security_Cheat_Sheet.html},
   urlaccessdate = {11 nov. 2026}
 }
 

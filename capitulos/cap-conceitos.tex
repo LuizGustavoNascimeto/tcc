@@ -1,80 +1,84 @@
-%%%% CAPÍTULO 2 - REVISÃO DA LITERATURA (OU REVISÃO BIBLIOGRÁFICA, ESTADO DA ARTE, ESTADO DO CONHECIMENTO)
-%%
-%% O autor deve registrar seu conhecimento sobre a literatura básica do assunto, discutindo e
-% comentando a informação já publicada.
-%% A revisão deve ser apresentada, preferencialmente, em ordem cronológica e por blocos de assunto,
-% procurando mostrar a evolução do tema.
-%% Título e rótulo de capítulo (rótulos não devem conter caracteres especiais, acentuados ou cedilha)
 \chapter{Fundamentação Teórica}\label{cap:fundamentacaoTeorica}
 
 Este capítulo apresenta os conceitos necessários para o entendimento da proposta e dos
-experimentos. Primeiro, discute-se por que um sistema de microsserviços é um sistema distribuído e
-que desafios isso traz. Em seguida, distinguem-se as formas de comunicação síncrona e assíncrona e
-apresentam-se o RPC, o gRPC, o HTTP/2 e os mecanismos que o gRPC oferece para lidar com falhas.
+experimentos. Primeiro, discute-se a arquitetura de microsserviços e os desafios de desenvolver uma
+aplicação distribuída com ela. Em seguida, apresenta-se o gRPC, protocolo de comunicação avaliado
+neste trabalho, com os mecanismos que oferece para lidar com falhas e a segurança dessa
+comunicação. Por fim, discutem-se os trabalhos relacionados.
 
-\section{Microsserviços}
-%%ideia de nome Desenvolvimento de aplicação distribuída com microsserviços
-%% Explorar mais sobre a arquitutera de microsserviços, é mais importante que a parte de assíncrona e síncrona
+\section{Desenvolvimento de aplicação distribuída com microsserviços}
 
-%% colocar sobre a 
+Em uma aplicação monolítica, os componentes compartilham o mesmo espaço de endereçamento,
+comunicam-se por chamadas de função diretas e são implantados juntos, como uma única unidade. À
+medida que o sistema cresce, essa unidade se torna difícil de evoluir e de escalar, pois qualquer
+mudança exige a implantação do todo e a aplicação só pode ser escalada por inteiro
+\cite{BuildingMicroservices:2015}.
 
-%% fica só os capitulos
-%% micros, (aqui nós queremos discutir mais, oq é?, até onde?)
-%% gRPC, falar mais sobre ele e juntar tudo
-%% trabalhando relacionados
+A arquitetura de microsserviços responde a esses limites decompondo a aplicação em serviços
+pequenos e autônomos que trabalham em conjunto \cite{BuildingMicroservices:2015}. Cada serviço
+executa em seu próprio processo, expõe uma interface bem definida e pode ser implantado, escalado e
+mantido de forma independente dos demais, inclusive com tecnologias e bancos de dados próprios
+\cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
 
-Em uma aplicação monolítica, os componentes compartilham o mesmo espaço de endereçamento e se
-comunicam por chamadas de função diretas. Ao decompor a aplicação em microsserviços, cada serviço
-passa a executar em seu próprio processo, em geral em máquinas diferentes. O resultado é um sistema
-distribuído: um conjunto de componentes em computadores interligados em rede que se comunicam e
-coordenam suas ações apenas pela troca de mensagens \cite{DistributedSystems:2013}.
+Resta definir quão pequeno deve ser um serviço. Não há um tamanho absoluto: as fronteiras costumam
+seguir as capacidades do negócio, de modo que cada serviço concentre uma responsabilidade coesa e
+seja o único dono dos seus dados \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
+Serviços grandes demais perdem a autonomia e voltam a se comportar como um monólito, e serviços
+pequenos demais multiplicam as chamadas pela rede e a complexidade de operar o sistema. A
+decomposição é, portanto, um compromisso, e a arquitetura compensa a complexidade adicional apenas
+em sistemas grandes o bastante para se beneficiar da escalabilidade e da autonomia que ela oferece.
+O sistema avaliado neste trabalho segue essa lógica, com serviços separados por responsabilidade
+(Capítulo~\ref{cap:proposta}).
 
-Essa mudança tem duas consequências centrais para este trabalho. A primeira é a latência: uma
-chamada que atravessa a rede é mais lenta que uma chamada local, pois envolve transmissão,
-serialização dos dados e cópia entre buffers \cite{DistributedSystems:2013}. Assim, o
-custo de cada chamada deixa de ser desprezível, e a forma como os serviços se comunicam passa a
-influenciar diretamente o desempenho. A segunda são as falhas parciais: os componentes podem falhar
-de forma independente enquanto os demais continuam em funcionamento, e o cliente não consegue
-distinguir se a ausência de resposta vem de uma falha no servidor ou na rede
-\cite{DistributedSystems:2013}. Por isso, o sistema precisa ser projetado para detectar e tolerar
-falhas, e não apenas evitá-las.
+O resultado da decomposição é um sistema distribuído: um conjunto de componentes em computadores
+interligados em rede que se comunicam e coordenam suas ações apenas pela troca de mensagens
+\cite{DistributedSystems:2013}. Essa mudança tem duas consequências centrais para este trabalho. A
+primeira é a latência: uma chamada que atravessa a rede é mais lenta que uma chamada local, pois
+envolve transmissão, serialização dos dados e cópia entre buffers
+\cite{DistributedSystems:2013}. Assim, o custo de cada chamada deixa de ser desprezível, e a forma
+como os serviços se comunicam passa a influenciar diretamente o desempenho. A segunda são as falhas
+parciais: os componentes podem falhar de forma independente enquanto os demais continuam em
+funcionamento, e o cliente não consegue distinguir se a ausência de resposta vem de uma falha no
+servidor ou na rede \cite{DistributedSystems:2013}. Por isso, o sistema precisa ser projetado para
+detectar e tolerar falhas, e não apenas evitá-las.
 
+A distribuição dos dados traz ainda um terceiro desafio. Como cada serviço é dono do próprio banco,
+uma operação de negócio que atravessa vários serviços não pode contar com uma única transação
+atômica. A consistência passa a depender de outras estratégias, como uma sequência de transações
+locais com ações compensatórias em caso de falha, conhecida como \textit{saga}
+\cite{BuildingMicroservices:2015}.
 
-%% sessão anterior tem mais peso que vc sobre o resto.
-\section{Comunicação síncrona e assíncrona}
-
-A comunicação entre processos pode ser síncrona ou assíncrona. Na comunicação síncrona, as
+A comunicação entre os serviços pode ser síncrona ou assíncrona. Na comunicação síncrona, as
 operações de envio e de recepção bloqueiam o processo até que a mensagem seja entregue ou
 respondida, enquanto na assíncrona o envio não é bloqueante e o processo de origem prossegue assim
 que a mensagem é copiada para o buffer local \cite{DistributedSystems:2013}. Nos modelos
 cliente-servidor baseados em requisição e resposta, a comunicação é tipicamente síncrona: o cliente
 envia a requisição e aguarda o resultado antes de continuar, e a própria resposta funciona como
-confirmação de que a operação foi concluída \cite{DistributedSystems:2013}.
+confirmação de que a operação foi concluída \cite{DistributedSystems:2013}. Por isso, a lentidão ou
+a falha de um serviço se propaga ao longo da cadeia de chamadas.
 
 É importante distinguir, entretanto, o comportamento da chamada do ponto de vista da aplicação dos
 mecanismos internos utilizados pela biblioteca cliente. Nas chamadas síncronas, o processo que
 invoca o método RPC aguarda sua conclusão, seja pelo recebimento da resposta, seja pela ocorrência
 de uma falha. Internamente, porém, a biblioteca pode utilizar mecanismos orientados a eventos para
 acompanhar o progresso da comunicação e gerenciar sua execução. Entre esses mecanismos estão as
-políticas de novas tentativas (\textit{retries}), que permitem à biblioteca realizar novas chamadas após
-determinadas falhas e intervalos de espera, de forma transparente para o chamador
+políticas de novas tentativas (\textit{retries}), que permitem à biblioteca realizar novas chamadas
+após determinadas falhas e intervalos de espera, de forma transparente para o chamador
 \cite{gRPC-Retry:2026}. São esses mecanismos, configurados na camada cliente, que constituem o foco
 da Seção~\ref{sec:mecanismos-grpc}.
 
-\section{Chamada de Procedimento Remoto (RPC)}
+\section{gRPC}
 
-O RPC é um paradigma de \textit{middleware} que estende a chamada de  procedimento local para o
-ambiente distribuído. Ele permite que um cliente  invoque procedimentos de um servidor remoto com a
-mesma sintaxe de uma chamada  local, ocultando detalhes da distribuição, como a codificação e a
-decodificação  de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013}.
+O RPC é um paradigma de \textit{middleware} que estende a chamada de procedimento local para o
+ambiente distribuído. Ele permite que um cliente invoque procedimentos de um servidor remoto com a
+mesma sintaxe de uma chamada local, ocultando detalhes da distribuição, como a codificação e a
+decodificação de parâmetros e resultados e a troca de mensagens \cite{DistributedSystems:2013}.
 
-\begin{figure}[htb]%% Ambiente figure
-  %\captionsetup{width=0.55\textwidth}%% Largura da legenda
-  \caption{Diagrama representando uma chamada RPC}%% Legenda
-  \label{fig:diagrama-rpc}%% Rótulo
-  \includegraphics[width=\textwidth]{diagrama-rpc.png}%% Dimensões e localização
-  % Dimensões e localização
-  \fonte{Adaptado de \citeonline[p.~201]{DistributedSystems:2013}}%% Fonte
+\begin{figure}[htb]
+  \caption{Diagrama representando uma chamada RPC}
+  \label{fig:diagrama-rpc}
+  \includegraphics[width=\textwidth]{diagrama-rpc.png}
+  \fonte{Adaptado de \citeonline[p.~201]{DistributedSystems:2013}}
   \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama representando uma chamada RPC.}
 \end{figure}
 
@@ -83,13 +87,11 @@ Essa transparência é viabilizada por um representante local do procedimento re
 identificação da operação e seus argumentos em uma mensagem de requisição, a envia ao servidor,
 bloqueia a execução do cliente até a chegada da resposta e, por fim, desempacota
 (\textit{unmarshalling}) os resultados ou exceções e os entrega ao código chamador
-\cite{DistributedSystems:2013}. A figura \ref{fig:diagrama-rpc} ilustra o processo, as setas
-tracejadas indicam comunicação interna enquanto as setas sólidas indicam comunicação via rede. Esse
-trabalho representa um custo de processamento a cada chamada, que se soma à latência da rede.
+\cite{DistributedSystems:2013}. A Figura~\ref{fig:diagrama-rpc} ilustra o processo: as setas
+tracejadas indicam comunicação interna, e as setas sólidas indicam comunicação via rede. Esse
+empacotamento representa um custo de processamento a cada chamada, que se soma à latência da rede.
 Embora o RPC oculte a distribuição do programador, ele não a elimina: a latência e as falhas
 parciais discutidas anteriormente continuam presentes.
-
-\section{gRPC}
 
 O gRPC é um \textit{framework} de RPC de código aberto no qual um cliente chama um método de um
 servidor em outra máquina como se fosse um objeto local. O serviço é definido de antemão, com os
@@ -102,20 +104,13 @@ Por padrão, o gRPC utiliza o \textit{Protocol Buffers} como linguagem de defini
 como formato de serialização das mensagens. O \textit{Protocol Buffers} é um mecanismo neutro
 quanto a linguagem e plataforma, extensível, para serializar dados estruturados
 \cite{Protobuf:2026}. As mensagens e os serviços são descritos em arquivos \texttt{.proto}, e o
-compilador \texttt{protoc}, com o plugin do gRPC, gera o código de cliente e servidor na linguagem
-escolhida \cite{gRPC-Documentation:2026}. O arquivo \texttt{.proto} funciona, assim, como um
-contrato único entre os serviços.
+compilador \texttt{protoc}, com o plugin do gRPC, gera o código de cliente e servidor na
+linguagem escolhida \cite{gRPC-Documentation:2026}. O arquivo \texttt{.proto} funciona, assim, como
+um contrato único entre os serviços. Como transporte, o gRPC utiliza o HTTP/2, que aprimora o HTTP
+com enquadramento binário, multiplexação de vários fluxos em uma única conexão TCP, compressão de
+cabeçalhos com HPACK e controle de fluxo \cite{LearningHTTP2:2017}.
 
-\section{HTTP/2}
-
-O HTTP/2 é um protocolo da camada de aplicação que aprimora a comunicação HTTP por meio de recursos
-como o enquadramento binário, a multiplexação de múltiplos fluxos em uma única conexão TCP, a
-compressão de cabeçalhos com HPACK e o controle de fluxo \cite{LearningHTTP2:2017}. O gRPC utiliza
-o HTTP/2 como protocolo de transporte, aproveitando esses recursos para realizar chamadas entre
-cliente e servidor. Além disso, utiliza quadros PING do HTTP/2 em seu mecanismo de
-\textit{keepalive}, que verifica periodicamente se a conexão permanece ativa \cite{gRPC-Keepalive:2026}.
-
-\section{Mecanismos de tolerância a falhas do gRPC}\label{sec:mecanismos-grpc}
+\subsection{Mecanismos de tolerância a falhas}\label{sec:mecanismos-grpc}
 
 O \textit{deadline} permite que o cliente defina quanto tempo está disposto a esperar por uma
 chamada, que é encerrada com o erro \texttt{DEADLINE\_EXCEEDED} ao fim desse prazo. O servidor, por
@@ -127,10 +122,10 @@ na configuração de serviço, com o número máximo de tentativas, os parâmetr
 exponencial e os códigos de status que permitem uma nova tentativa. Os \textit{retries} só ocorrem
 dentro do prazo do \textit{deadline} \cite{gRPC-Retry:2026}. Para evitar a sobrecarga do servidor,
 o gRPC também oferece o \textit{retry throttling}: quando a proporção de falhas em relação a
-sucessos passa de um limite, o cliente deixa de retransmitir \cite{gRFC-A6:2024}. O
-\textit{hedging} é a alternativa em que o cliente envia a mesma chamada várias vezes, sem esperar a
-falha da anterior, a cada intervalo definido, e usa a primeira resposta recebida. Uma mesma chamada
-é regida por \textit{retry} ou por \textit{hedging}, nunca pelos dois \cite{gRFC-A6:2024}.
+sucessos passa de um limite, o cliente deixa de retransmitir \cite{gRFC-A6:2024}. A especificação
+também descreve o \textit{hedging}, em que o cliente envia cópias da mesma chamada em paralelo, mas
+esse mecanismo não está implementado no gRPC-Go \cite{gRFC-A6:2024}, biblioteca utilizada neste
+trabalho, e por isso fica fora do escopo da avaliação.
 
 Por fim, o \textit{keepalive} verifica periodicamente se a conexão ainda funciona, enviando quadros
 PING do HTTP/2. Se o par não confirmar o recebimento dentro de um prazo, a conexão é encerrada
@@ -140,8 +135,21 @@ parâmetros devem estar de acordo com os do servidor, que pode encerrar a conex�
 trocam capacidade por robustez, pois tentativas adicionais consomem recursos do servidor, e esse
 equilíbrio é o objeto de avaliação deste trabalho.
 
+\subsection{Segurança}\label{sec:seguranca-grpc}
 
-% ATENÇÃO - veja com o seu orientador se você vai ter este capítulo e se este vai ter nome!
+O gRPC não cifra a comunicação por conta própria. Em produção, as mensagens devem trafegar com
+TLS, os serviços só devem responder em portas seguras, os detalhes de uma exceção não devem voltar
+ao cliente e o tamanho das mensagens de entrada deve ser limitado, pois elas são carregadas na
+memória \cite{gRPC-Security:2026}. Entre serviços, o mTLS exige certificado dos dois lados
+\cite{OWASP-gRPC-Security:2026}. Esses controles são recomendações do ecossistema gRPC, e não
+medidas tiradas de um experimento com gRPC-Go.
+
+O \textit{deadline} também limita quanto tempo um servidor fica ocupado com uma chamada. Os
+\textit{retries} podem multiplicar, no servidor, a carga originada por poucas
+chamadas do cliente \cite{OWASP-gRPC-Security:2026,gRFC-A6:2024}. A autenticação por token e a
+autorização por método protegem o serviço \cite{OWASP-gRPC-Security:2026}; neste trabalho elas
+fazem parte do sistema, e o que se mede é o efeito dos mecanismos de tolerância a falhas.
+
 \section{Trabalhos Relacionados}
 \label{sec:trabalhos:relacionados}
 
@@ -155,7 +163,7 @@ efeito do gRPC.
 
 Outros trabalhos examinam o custo de intermediários na comunicação.
 \citeonline{LoadBalancer-Evaluation:2022} mostrou que um proxy L7 no balanceamento de
-carga gRPC adiciona cerca de 1 ms por chamada e consome mais CPU e memória do que o balanceamento
+carga gRPC adiciona cerca de 1~ms por chamada e consome mais CPU e memória do que o balanceamento
 no cliente. \citeonline{RethinkingRPC:2025} apontam o empilhamento de protocolos e os
 \textit{sidecars} como fontes de latência e consumo de CPU, e propõem uma pilha RPC compilada, com
 descarregamento de funções de rede para eBPF e hardware programável. Esse custo é relevante aqui,
@@ -166,13 +174,56 @@ uma extensão do Kubernetes que automatiza a avaliação de estratégias de resi
 falhas via Envoy em chamadas HTTP e gRPC. \citeonline{FastFI:2026} propõem o FastFI, que
 usa injeção de falhas combinatórias para decidir em quais chamadas aplicar \textit{retries} e
 \textit{fallbacks}, e reduz em mais de 76\% o tempo dos experimentos em relação às soluções
-existentes. Os dois focam nas ferramentas de teste, e não na avaliação de um sistema completo.
+existentes. Os dois avaliam a ferramenta de injeção de falhas, e não o efeito dos
+\textit{deadlines}, \textit{retries} e \textit{keepalive} do cliente gRPC.
 
-Em resumo, os trabalhos revisados tratam cada um de um aspecto isolado: o desempenho do gRPC, o
-custo de um proxy ou a resiliência sob falhas. Entre eles, nenhum avalia sistematicamente
-os mecanismos nativos do gRPC (\textit{deadlines}, \textit{retries}, \textit{hedging} e
-\textit{keepalive}) sob carga e sob falha, nem seus efeitos conjuntos sobre desempenho, tolerância
-a falhas e segurança. É nessa lacuna que este trabalho se posiciona.
+Na segurança, \citeonline{gRPC-Security-Proxy:2025} propõem um proxy que aplica mTLS, JWT e RBAC às
+chamadas gRPC e medem o seu custo. O proxy adicionou 2,8~ms de latência média a 100 requisições por
+segundo e 5,1~ms a 500, e manteve de 93\% a 96\% da vazão de um serviço sem as camadas de
+segurança. Em uma simulação de negação de serviço, bloqueou 99,98\% das requisições não
+autorizadas. O trabalho mede o custo e a eficácia de uma camada de segurança, mas não avalia o
+risco que os próprios mecanismos de tolerância a falhas do gRPC criam.
+
+A Tabela~\ref{tab:trabalhos-relacionados} resume os trabalhos discutidos.
+
+\begin{table}[htb]
+  \centering
+  \caption{Comparação dos trabalhos relacionados}\label{tab:trabalhos-relacionados}
+  \begin{tabularx}{\textwidth}{
+      >{\raggedright\arraybackslash}p{3.4cm}
+      >{\raggedright\arraybackslash}X
+      ccc
+    >{\centering\arraybackslash}p{2.2cm}}
+    \hline
+    Trabalho & Foco & Desempenho & Resiliência & Segurança
+    & Mecanismos nativos \\
+    \hline
+    \citeonline{PerformanceEvaluation:2024}
+    & Comparação de protocolos & sim & não & não & não \\
+    \citeonline{Keeps-CaseStudy:2025}
+    & Estudo de caso & sim & não & não & não \\
+    \citeonline{LoadBalancer-Evaluation:2022}
+    & Custo de proxy L7 & sim & não & não & não \\
+    \citeonline{RethinkingRPC:2025}
+    & Custo de \textit{sidecars} & sim & não & não & não \\
+    \citeonline{ResilienceBench-Operator:2025}
+    & Ferramenta de testes & não & sim & não & não \\
+    \citeonline{FastFI:2026}
+    & Injeção de falhas & não & sim & não & não \\
+    \citeonline{gRPC-Security-Proxy:2025}
+    & Proxy de segurança & sim & não & sim & não \\
+    \hline
+  \end{tabularx}
+  \fonte{}
+\end{table}
+
+Na tabela~\ref{tab:trabalhos-relacionados}, as colunas indicam se cada trabalho avalia o desempenho
+da comunicação, a resiliência sob falhas, a segurança e os mecanismos nativos do gRPC
+(\textit{deadlines}, \textit{retries} e \textit{keepalive}). O foco de cada estudo aparece na
+segunda coluna. Cada trabalho trata de um aspecto isolado. \citeonline{Retry-Experiment:2023} medem
+o padrão de \textit{retry} em outra \textit{stack}, com Resilience4j e Polly, e não no gRPC-Go.
+Este trabalho pretende avaliar, em gRPC-Go, esses três mecanismos sob carga e sob falha injetada, e
+o fator de amplificação das retransmissões. Não se encontrou essa avaliação conjunta nos trabalhos revisados.
 
 
 %---------------------------------------------------%

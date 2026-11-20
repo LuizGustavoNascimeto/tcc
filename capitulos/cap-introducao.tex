@@ -20,8 +20,8 @@ produção, ele costuma ser usado com o Envoy, um proxy que intermedeia o tráfe
 
 Para lidar com a latência e as falhas parciais da comunicação, o gRPC oferece mecanismos nativos e
 configuráveis: os \textit{deadlines} limitam o tempo de espera de uma chamada, os \textit{retries}
-reenviam chamadas que falham, o \textit{hedging} envia cópias da mesma chamada em paralelo e o
-\textit{keepalive} detecta conexões interrompidas \cite{gRPC-Documentation:2026}. Esses mecanismos,
+reenviam chamadas que falham e o \textit{keepalive} detecta conexões interrompidas
+\cite{gRPC-Documentation:2026}. Esses mecanismos,
 porém, não são gratuitos: cada tentativa adicional consome capacidade do servidor, e uma
 configuração inadequada pode sobrecarregá-lo em vez de protegê-lo \cite{gRFC-A6:2024}.
 
@@ -38,17 +38,17 @@ estudos existentes tendem a isolar um aspecto, seja o desempenho do protocolo, o
 \cite{ResilienceBench-Operator:2025}, o que deixa em aberto como os mecanismos nativos do gRPC se
 comportam quando o sistema está sob carga e sob falha ao mesmo tempo.
 
-Diante disso, a pergunta que orienta este trabalho é: como se comportam os mecanismos nativos do
-gRPC (\textit{deadlines}, \textit{retries}, \textit{hedging} e \textit{keepalive}) em um sistema de
-microsserviços semelhante a um ambiente de produção, quanto ao desempenho, à tolerância a falhas e
-à segurança, e até que nível de carga esse comportamento se mantém?
+Diante disso, a pergunta que orienta este trabalho é: qual o efeito dos \textit{deadlines},
+\textit{retries} e \textit{keepalive} do gRPC-Go sobre a latência, a vazão e a disponibilidade de
+um \textit{marketplace} de microsserviços sob carga e sob falha injetada, e em que condição a
+retransmissão passa a prejudicar o tráfego legítimo?
 
-
-%Falar mais sobre os outros objetivos a serem alcançados (segurança por exemplo).
 \section{Objetivos}
 
-O objetivo geral deste trabalho é avaliar empiricamente os mecanismos nativos do gRPC para
-tolerância a falhas em um cenário de \textit{marketplace}.
+O objetivo geral deste trabalho é avaliar o efeito dos \textit{deadlines}, \textit{retries} e
+\textit{keepalive} do gRPC-Go sobre a latência, a vazão e a disponibilidade de um
+\textit{marketplace} de microsserviços, sob carga e sob falha injetada, e identificar em que
+condição a retransmissão passa a prejudicar o tráfego legítimo.
 
 Para alcançá-lo, definem-se os seguintes objetivos específicos:
 
@@ -56,7 +56,7 @@ Para alcançá-lo, definem-se os seguintes objetivos específicos:
   \item projetar e implementar um sistema de microsserviços em Go, com gRPC e
     \textit{Protocol Buffers}, inspirado no \textit{system design} de um
     \textit{marketplace} de comércio eletrônico;
-  \item configurar os \textit{deadlines}, \textit{retries}, \textit{hedging} e
+  \item configurar os \textit{deadlines}, \textit{retries} e
     \textit{keepalive} do gRPC em configurações progressivas, para comparar o
     efeito de cada mecanismo;
   \item mensurar o desempenho sob carga por meio da latência (percentis p50, p90
@@ -66,10 +66,10 @@ Para alcançá-lo, definem-se os seguintes objetivos específicos:
     tempo médio de recuperação (\textit{Mean Time To Recovery}, MTTR) e da taxa
     de erros, e calcular a disponibilidade resultante como a proporção de
     requisições bem-sucedidas;
-  \item analisar a segurança do sistema, considerando o uso de TLS do gRPC, a
-    superfície de ataque, as vulnerabilidades conhecidas nas tecnologias
-    empregadas e o risco de amplificação de carga por \textit{retries} e
-    \textit{deadlines}.
+  \item identificar em que condição a retransmissão passa a prejudicar o tráfego
+    legítimo, medindo a amplificação de carga dos \textit{retries} e a
+    disponibilidade desse tráfego nas configurações sem mecanismos e com todos
+    eles.
 \end{itemize}
 
 \section{Justificativa}
@@ -82,10 +82,7 @@ serviços, o que permite observar o efeito dos mecanismos em uma cadeia de chama
 
 \section{Organização do Texto}
 
-Este trabalho está organizado em seis capítulos, incluindo esta introdução. O
-Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos necessários para o entendimento do
-trabalho. O Capítulo~\ref{cap:trabalhos:relacionados} discute os trabalhos relacionados e a lacuna
-que este trabalho busca preencher. Com base neles, o Capítulo~\ref{cap:proposta} descreve a
-proposta de implementação do sistema e a forma como ele será avaliado. Em seguida, o
-Capítulo~\ref{cap:resultados} apresenta e discute os resultados dos experimentos. Por fim, o
-Capítulo~\ref{cap:conclusao} reúne as conclusões.
+O Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos e os trabalhos
+relacionados (Seção~\ref{sec:trabalhos:relacionados}). O Capítulo~\ref{cap:proposta}
+descreve a proposta de avaliação. O Capítulo~\ref{cap:consideracoes} reúne as
+considerações finais.

@@ -3,33 +3,107 @@
 
 Este capítulo descreve o sistema a ser implementado, o ambiente do experimento,
 as configurações dos mecanismos do gRPC que serão comparadas e a forma como o
-desempenho, a tolerância a falhas, a segurança e o ponto de ruptura serão
-avaliados.
+desempenho, a tolerância a falhas e a segurança serão avaliados.
 
-\section{Sistema a ser implementado}
+\section{Sistema a ser implementado}\label{sec:sistema}
 
-O sistema é um \textit{marketplace} de comércio eletrônico em Go, composto por
-cinco serviços (inventário, busca, compra, pagamento simulado e usuários)
-atrás de um \textit{gateway}. A comunicação entre os serviços usa gRPC e
-\textit{Protocol Buffers}, e o Envoy atua como proxy e balanceador de
-carga entre eles, com suas políticas próprias de \textit{retry}, \textit{timeout}
-e \textit{circuit breaking} desabilitadas, de modo que o efeito observado seja
-atribuído aos mecanismos do gRPC. Os mecanismos são configurados nos clientes
-gRPC dos serviços, e as chamadas são unárias.
+O sistema é um \textit{marketplace} de comércio eletrônico em Go, composto por seis serviços
+(autenticação, inventário, busca, compra, pagamento simulado e usuários) atrás de um
+\textit{gateway}. A comunicação entre os serviços usa gRPC e \textit{Protocol Buffers}, e o Envoy
+atua como proxy e balanceador de carga entre eles, com suas políticas próprias de \textit{retry},
+\textit{timeout} e \textit{circuit breaking} desabilitadas, de modo que o efeito observado seja
+atribuído aos mecanismos do gRPC. Os mecanismos são configurados nos clientes gRPC dos serviços,
+inclusive nas chamadas ao serviço de autenticação, e as chamadas são unárias.
 
-Três fluxos de negócio compõem a carga: gerenciar o inventário, buscar itens e
-comprar. A compra é o fluxo central, pois é uma transação distribuída (bloqueio
-  do carrinho, atualização de estoque e pagamento, com \textit{rollback} em caso
-de falha) que atravessa vários serviços. Ela gera a cadeia de chamadas mais
-profunda e é o ponto natural para a injeção de falhas.
+A Figura~\ref{fig:arquitetura-sistema} apresenta a arquitetura do sistema. Nela, os retângulos verdes
+representam serviços, os vermelhos, bancos de dados, e o roxo, proxy. As setas tracejadas
+simbolizam rotas públicas, e as setas contínuas representam rotas com proteção de autenticação
+(privadas). O cliente, que no experimento é o k6, envia as requisições ao \textit{gateway}, que as
+encaminha ao Envoy, e é do \textit{gateway} para baixo que a comunicação usa mTLS. O Envoy
+distribui as chamadas aos serviços. As rotas públicas são o login, atendido pelo serviço de
+autenticação, a consulta de itens, atendida pelo inventário, e a busca. As demais são privadas: o
+perfil, atendido pelo serviço de usuários, o gerenciamento de itens, atendido pelo inventário, e a
+compra. Nas rotas privadas, o \textit{gateway} consulta o serviço de autenticação para validar o token JWT
+antes de encaminhar a chamada. A compra, por sua vez, revalida o token junto ao serviço de autenticação,
+atualiza o estoque no inventário e cobra o valor no serviço de pagamento. Cada serviço acessa o
+banco de dados que lhe cabe, e a compra, o inventário e a busca usam ainda o Redis, detalhado adiante.
 
+\begin{figure}[htb]
+  \caption{Arquitetura do sistema}
+  \label{fig:arquitetura-sistema}
+  \includegraphics[width=\textwidth]{arquitetura-sistema.png}
+  \fonte{}
+  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Arquitetura do sistema.}
+\end{figure}
 
-Os dados ficam em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O
-inventário e as requisições de compra (\textit{tickets}) ficam no MongoDB (NoSQL), e os pedidos de
-compra, os pagamentos e os usuários ficam no PostgreSQL (SQL). Cada banco tem uma única instância,
-com esquemas ou coleções separados por serviço. Além deles, o sistema usa o Redis, um banco de dados
-em memória, como cache do inventário nas buscas e como \textit{lock} distribuído com TTL durante a
-compra, o que evita um bloqueio preso se o serviço falhar.
+O sistema adota as recomendações de segurança do gRPC \cite{gRPC-Security:2026,
+OWASP-gRPC-Security:2026}: TLS na entrada, mTLS entre os serviços, \textit{reflection} desligada e
+limite de tamanho nas mensagens de entrada. A autenticação é feita pelo serviço de autenticação,
+que emite tokens JWT no login e os valida. A consulta de itens do inventário e a busca são
+públicas, e todas as demais operações exigem um token válido e a permissão do papel do usuário para
+o método. Além disso, os serviços verificam o pertencimento do recurso: um usuário autenticado só
+acessa os pedidos, pagamentos e dados que são seus, e não os de outro usuário. Com isso, a
+comunicação é cifrada, os serviços se autenticam entre si, cada cliente acessa apenas o que seu
+papel e a posse dos recursos permitem, a interface do serviço não é exposta e o consumo de memória
+por mensagem é limitado.
+
+Três fluxos de negócio compõem a carga: gerenciar o inventário, buscar itens e comprar. A busca é
+pública, e o gerenciamento do inventário e a compra exigem autenticação. A compra é o fluxo
+central, pois é uma transação distribuída (bloqueio do carrinho, atualização de estoque e
+pagamento, com \textit{rollback} em caso de falha) que atravessa vários serviços, inclusive o de
+autenticação. Ela gera a cadeia de chamadas mais profunda e é o ponto natural para a injeção de falhas.
+
+A Figura~\ref{fig:sequencia-compra} detalha esse fluxo em 25 passos. As setas contínuas representam
+chamadas tratadas como síncronas, e as tracejadas, chamadas tratadas como assíncronas. Os passos são
+os seguintes:
+
+\begin{figure}[htb]
+  \caption{Diagrama de sequência do fluxo de compra}
+  \label{fig:sequencia-compra}
+  \includegraphics[width=\textwidth]{sequencia-compra.png}
+  \fonte{}
+  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama de sequência do fluxo de compra.}
+\end{figure}
+
+\begin{enumerate}
+  \item O cliente envia ao \textit{gateway} a requisição de compra, com o token JWT.
+  \item O \textit{gateway} pede ao serviço de autenticação que valide o token.
+  \item O serviço de autenticação devolve a identidade e o papel do usuário.
+  \item O \textit{gateway} encaminha ao serviço de compra o início da compra, com o token.
+  \item A compra solicita ao Redis um \textit{lock} com TTL.
+  \item O Redis confirma que o \textit{lock} foi obtido.
+  \item A compra pede ao inventário que reserve o estoque.
+  \item O inventário registra um \textit{ticket} no MongoDB.
+  \item O inventário informa que o estoque foi reservado.
+  \item A compra cria o pedido do usuário no PostgreSQL.
+  \item A compra revalida o token junto ao serviço de autenticação.
+  \item O serviço de autenticação devolve o resultado da validação.
+  \item Se o token é válido, a compra pede o pagamento ao serviço de pagamento.
+  \item O serviço de pagamento devolve o resultado do pagamento.
+  \item Se o pagamento foi aprovado, a compra confirma o pedido.
+  \item Se o pagamento falhou, a compra pede ao inventário que devolva o estoque.
+  \item O inventário informa que o estoque foi devolvido.
+  \item A compra cancela o pedido.
+  \item Se o token é inválido, a compra pede ao inventário que devolva o estoque.
+  \item O inventário informa que o estoque foi devolvido.
+  \item A compra cancela o pedido.
+  \item Em qualquer desfecho, a compra pede ao Redis que libere o \textit{lock}.
+  \item O Redis informa que o \textit{lock} foi liberado.
+  \item A compra devolve o resultado ao \textit{gateway}.
+  \item O \textit{gateway} devolve o resultado ao cliente.
+\end{enumerate}
+
+Os passos 13 a 21 são desfechos alternativos: quando o token é válido, ocorrem os passos 13 e 14 e,
+conforme o resultado do pagamento, o passo 15 ou os passos 16 a 18, e quando o token é inválido,
+ocorrem os passos 19 a 21. A devolução do estoque e o cancelamento do pedido compõem o
+\textit{rollback} da compra.
+
+Os dados ficam em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O inventário
+e as requisições de compra (\textit{tickets}) ficam no MongoDB (NoSQL), e os pedidos de compra, os
+pagamentos, os usuários e os tokens ficam no PostgreSQL (SQL). Cada banco tem uma única
+instância, com esquemas ou coleções separados por serviço. Além deles, o sistema usa o Redis, um
+banco de dados em memória, como cache do inventário nas buscas e como \textit{lock} distribuído com
+TTL durante a compra, o que evita um bloqueio preso se o serviço falhar.
 
 \begin{figure}[htb]%% Ambiente figure
   %\captionsetup{width=0.55\textwidth}%% Largura da legenda
@@ -37,21 +111,24 @@ compra, o que evita um bloqueio preso se o serviço falhar.
   \label{fig:diagrama-banco-de-dados}%% Rótulo
   \includegraphics[width=\textwidth]{schema-db.png}%% Dimensões e localização
   % Dimensões e localização
-  \fonte{Adaptado de \citeonline[]{SDInterview:2022}}%% Fonte
-  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama do banco de dados dividido em NoSQL e SQL.}
+  \fonte{Adaptado de \citeonline{SDInterview:2022}}%% Fonte
+  \addcontentsline{loge}{figure}{\protect\numberline{\thefigure}Diagrama do banco de dados dividido
+  em NoSQL e SQL.}
 \end{figure}
 
 Um item do inventário gera várias requisições (1:N), e várias requisições compõem um pedido de
-compra (N:1). Cada pedido tem um pagamento (1:1) e pertence a um usuário (N:1).
-
+compra (N:1). Cada pedido tem um pagamento (1:1) e pertence a um usuário (N:1), e é esse vínculo
+que permite verificar o pertencimento. Um usuário pode ter vários tokens (1:N).
 
 \section{Infraestrutura e ambiente}
 
-O experimento roda em duas VPS da Contabo com Ubuntu 24.04, cada uma com 4 vCPUs e 8~GB de memória.
+O experimento roda em duas VPS da Contabo com Ubuntu 24.04, cada uma com 4~vCPUs e 8~GB de memória.
 Uma executa o sistema, e a outra executa a geração de carga (k6) e a observabilidade (Prometheus e
 Grafana), de modo que o gerador de carga não compete por recursos com o sistema testado. As
 métricas do sistema são coletadas pelo Prometheus, e as métricas do lado do cliente, pelo k6. As
-versões de Go, gRPC-Go e Envoy serão fixadas na implementação do sistema. Para garantir a
+versões ficam fixadas: Go 1.26.11, gRPC-Go 1.85.0, Envoy 1.40.2, k3s 1.37.2, Chaos Mesh 2.8.8,
+k6 2.4.0 e Prometheus 3.13.5. O Prometheus usa a série de suporte longo; as demais são a versão
+estável atual da linha escolhida. Para garantir a
 reprodutibilidade, o código e os arquivos de configuração serão publicados em um repositório no GitHub.
 
 Os serviços, os bancos de dados e o Envoy são orquestrados com o Kubernetes, na distribuição leve
@@ -61,117 +138,109 @@ CPU e memória definidos nos manifestos, e o Kubernetes também é a base da inj
 
 \section{Configurações experimentais}
 
-A hipótese central do trabalho é que os mecanismos nativos do gRPC contribuem
-para a resiliência e a disponibilidade do sistema, mas com custos que variam
-conforme a carga e o tipo de falha. Para avaliá-la, o sistema é executado em
-cinco configurações progressivas dos mecanismos (Tabela~\ref{tab:configuracoes}).
-O \textit{keepalive} é também variado nos cenários de falha de conexão. Como o
-gRPC não permite que um \textit{retry} e o \textit{hedging} regam a mesma
-chamada \cite{gRFC-A6:2024}, a configuração completa aplica cada um a métodos
-diferentes.
+A hipótese central do trabalho é que os mecanismos nativos do gRPC contribuem para a resiliência e
+a disponibilidade do sistema, mas com custos que variam conforme a carga e o tipo de falha. Para
+avaliá-la, o sistema é executado em quatro configurações progressivas dos mecanismos
+(Tabela~\ref{tab:configuracoes}). O \textit{keepalive} é também variado nos cenários de falha de
+conexão. Os mecanismos valem para todos os clientes gRPC do sistema, inclusive para as chamadas ao
+serviço de autenticação. Validar um token é uma leitura, de modo que repeti-la não tem efeito colateral.
 
 \begin{table}[htb]
   \centering
   \caption{Configurações comparadas}\label{tab:configuracoes}
-  \begin{tabular}{lcccc}
+  \begin{tabular}{lccc}
     \hline
-    Configuração & \textit{Deadlines} & \textit{Retries} & \textit{Hedging} & \textit{Keepalive} \\
+    Configuração & \textit{Deadlines} & \textit{Retries} & \textit{Keepalive} \\
     \hline
-    (a) sem mecanismos & não & não & não & não \\
-    (b) \textit{deadlines} & sim & não & não & não \\
-    (c) \textit{retries}   & sim & sim & não & não \\
-    (d) \textit{hedging}   & sim & não & sim & não \\
-    (e) completa           & sim & sim & sim & sim \\
+    (a) sem mecanismos & não & não & não \\
+    (b) \textit{deadlines} & sim & não & não \\
+    (c) \textit{retries}   & sim & sim & não \\
+    (d) completa           & sim & sim & sim \\
     \hline
   \end{tabular}
+  \fonte{}
 \end{table}
 
-%% usar uma fonte menor e um asterísico sobrescrito
-
-Os \textit{deadlines} valem o dobro do tempo médio de resposta de cada serviço
-em operação normal. Nos \textit{retries}, o número máximo de tentativas é 4 (a
-original mais três retentativas), com o \textit{backoff} exponencial do gRPC.
+Os \textit{deadlines} valem o dobro do tempo médio de resposta de cada serviço em operação normal.
+Nos \textit{retries}, o número máximo de tentativas é 4 (a original mais três retentativas), com o
+\textit{backoff} exponencial do gRPC.
 
 Os \textit{retries} são acionados apenas pelo código \texttt{UNAVAILABLE}, que indica falha
 transitória, com \textit{backoff} inicial de 100~ms, máximo de 1~s e multiplicador 2. O
-\textit{retry throttling} é usado nas configurações (c) e (e), com \texttt{maxTokens} igual a 10 e
-\texttt{tokenRatio} igual a 0,1. No \textit{hedging}, o atraso entre as chamadas é aproximadamente o
-p95 do tempo de resposta do serviço em operação normal, o número máximo de tentativas é 3 e o
-código \texttt{UNAVAILABLE} é tratado como falha não fatal, de modo que as demais chamadas
-continuam em andamento. No \textit{keepalive}, o cliente envia um \textit{ping} a cada 10~s e
+\textit{retry throttling} é usado nas configurações (c) e (d), com \texttt{maxTokens} igual a 10 e
+\texttt{tokenRatio} igual a 0,1. No \textit{keepalive}, o cliente envia um \textit{ping} a cada 10~s e
 encerra a conexão se não houver confirmação em 3~s, inclusive sem chamadas ativas, e o servidor é
 configurado para aceitar \textit{pings} com intervalo mínimo compatível. Como os \textit{retries}
-e o \textit{hedging} podem duplicar o efeito de operações de escrita, as escritas da compra e do
+podem duplicar o efeito de operações de escrita, as escritas da compra e do
 pagamento carregam uma chave de idempotência, e o serviço descarta a execução repetida de uma
-mesma chave. Assim, esses mecanismos podem ser aplicados também a elas. Esses valores são
+mesma chave. Assim, esse mecanismo pode ser aplicado também a elas. Esses valores são
 iniciais e podem ser ajustados na implementação, sendo registrados no repositório.
 
 \section{Avaliação de desempenho}
 
-A carga é gerada com o k6, que suporta gRPC e o fluxo composto da compra, com
-90\% de operações de leitura e 10\% de escrita. A carga segue um modelo fechado
-(usuários concorrentes), tanto constante quanto crescente. Cada execução tem 60
-segundos de \textit{warm-up} e 10 minutos de medição. As métricas são a latência
-(p50, p90 e p99) e a vazão, coletadas pelo k6 e pelo Prometheus, e o uso de CPU
-e memória, coletado pelo Prometheus.
+A carga é gerada com o k6, que suporta gRPC e o fluxo composto da compra, com 90\% de operações de
+leitura e 10\% de escrita. A consulta de itens e a busca são públicas e não passam pela
+autenticação, de modo que a proporção entre operações públicas e protegidas define a carga sobre o
+serviço de autenticação. A carga segue um modelo fechado (usuários concorrentes), tanto constante
+quanto crescente. Cada execução tem 60 segundos de \textit{warm-up} e 10 minutos de medição. As
+métricas são a latência (p50, p90 e p99) e a vazão, coletadas pelo k6 e pelo Prometheus, e o uso de
+CPU e memória, coletado pelo Prometheus.
 
 \section{Tolerância a falhas e disponibilidade}\label{sec:falhas}
 
-As falhas são injetadas nos serviços periféricos, com o sistema sob carga
-crescente, para verificar se o sistema se mantém disponível diante de uma falha
-parcial. Os tipos de falha são escolhidos para exercitar cada mecanismo:
-latência artificial (\textit{deadlines}), erros de indisponibilidade
-(\textit{retries}), lentidão de cauda (\textit{hedging}) e queda de conexão
-(\textit{keepalive}).
+As falhas são injetadas nos serviços periféricos, com o sistema sob carga crescente, para verificar
+se o sistema se mantém disponível diante de uma falha parcial. Os tipos de falha são escolhidos
+para exercitar cada mecanismo: latência artificial (\textit{deadlines}), erros de indisponibilidade
+(\textit{retries}) e queda de conexão (\textit{keepalive}).
 
 As falhas são injetadas com o Chaos Mesh, que opera sobre os pods do Kubernetes. A
-latência artificial e a lentidão de cauda são produzidas com o \texttt{NetworkChaos}, que adiciona
+latência artificial é produzida com o \texttt{NetworkChaos}, que adiciona
 atraso e variação (\textit{jitter}) ao tráfego do serviço alvo. A indisponibilidade e a queda de
 conexão são produzidas com o \texttt{PodChaos} (falha ou reinício do pod) e com o
 \texttt{NetworkChaos} (perda de pacotes e partição de rede). Cada experimento define a duração e o
-momento da injeção em um manifesto versionado, o que permite repeti-lo nas cinco configurações.
+momento da injeção em um manifesto versionado, o que permite repeti-lo nas quatro configurações.
 
-O MTTR é medido da seguinte forma. A falha é considerada iniciada quando a taxa
-de requisições com erro ultrapassa um limiar, definido a partir das métricas
-obtidas em momentos de pico de carga, e é considerada resolvida quando o sistema
-volta a responder dentro desse limiar por 10 segundos consecutivos. A
-disponibilidade é a proporção de requisições bem-sucedidas em relação ao total.
+O MTTR é medido da seguinte forma. A falha é considerada iniciada quando a taxa de requisições com
+erro ultrapassa um limiar, definido a partir das métricas obtidas em momentos de pico de carga, e é
+considerada resolvida quando o sistema volta a responder dentro desse limiar por 10 segundos
+consecutivos. A disponibilidade é a proporção de requisições bem-sucedidas em relação ao total.
+
+A disponibilidade é a proporção de requisições bem-sucedidas em relação ao total, calculada
+separadamente para as operações públicas e para as protegidas. Como a consulta de itens e a busca
+não dependem da autenticação, uma falha no serviço de autenticação afeta apenas as operações
+protegidas, e o cálculo conjunto a esconderia.
 
 \section{Análise de segurança}
 
-A segurança é avaliada em três frentes. A primeira é o uso do TLS do gRPC na
-comunicação entre os serviços. A segunda é a superfície de ataque (portas
-expostas e \textit{endpoints} acessíveis) e as vulnerabilidades conhecidas nas
-dependências, buscadas com o Docker Scout e o \texttt{govulncheck}. A terceira é
-o efeito de amplificação de carga causado pelos \textit{retries} e pelo
-\textit{hedging}, medido em cada configuração pela razão entre as chamadas
-recebidas pelos serviços e as chamadas originadas pelos clientes. Este trabalho
-mede esse efeito, mas não executa ataques.
+A pergunta da análise de segurança é se os mecanismos que protegem o sistema contra falhas
+continuam protegendo quando a falha é provocada por tráfego abusivo. Os \textit{retries}
+multiplicam as chamadas que chegam aos serviços, de modo que um sistema já
+sobrecarregado pode ser levado ao colapso pela própria retransmissão \cite{Retry-Experiment:2023}.
+O TLS, o mTLS e o controle de acesso da Seção~\ref{sec:sistema} compõem o sistema e não são
+comparados entre as configurações, mas as chamadas ao serviço de autenticação sofrem o efeito dos
+mecanismos e entram nas medições.
 
-Para organizar a análise, é construído um modelo de ameaças com o STRIDE, que classifica as
-ameaças em falsificação de identidade, adulteração, repúdio, divulgação de informação, negação de
-serviço e elevação de privilégio. O modelo é aplicado aos componentes do sistema e às fronteiras de
-confiança entre o \textit{gateway}, os serviços, os bancos de dados e o Redis, e cada ameaça é
-associada ao controle que a mitiga ou à avaliação deste trabalho que a cobre. A negação de serviço
-recebe atenção especial, pois os \textit{retries} e o \textit{hedging} podem ampliar a carga sobre
-os serviços.
+Sobre a carga legítima aplica-se um tráfego abusivo de intensidade crescente, nas configurações (a)
+e (d). Em cada uma, registram-se a disponibilidade e a latência do tráfego legítimo e o fator de
+amplificação, isto é, a razão entre as chamadas recebidas pelos serviços e as originadas pelos
+clientes. Como esse fator é limitado pelo número máximo de tentativas, o que se observa é em que
+nível de carga ele se aproxima desse limite e quando o \textit{retry throttling} o reduz. Se a
+configuração (d) apresentar disponibilidade menor que a (a), os mecanismos agravam o ataque, e se
+apresentar maior, o atenuam.
 
 \section{Ponto de ruptura}
 
-O ponto de ruptura é buscado nas configurações (a) e (e), para comparar o
-sistema sem mecanismos com o sistema com todos eles. A carga é aumentada em
-rampa, de 100 requisições por segundo a cada 10 segundos, até que o sistema
-deixe de atender aos critérios: p99 acima de 500~ms ou taxa de erro acima de
-1\%. O gargalo é identificado pelas métricas de CPU, memória, rede e latência
-do Prometheus e do k6.
+O ponto de ruptura é buscado nas configurações (a) e (d), para comparar o sistema sem mecanismos
+com o sistema com todos eles. A carga é aumentada em rampa, de 100 requisições por segundo a cada
+10 segundos, até que o sistema deixe de atender aos critérios: p99 acima de 500~ms ou taxa de erro
+acima de 1\%. O gargalo é identificado pelas métricas de CPU, memória, rede e latência do Prometheus e do k6.
 
 \section{Análise dos dados e cronograma}
 
-Os resultados são analisados por médias e intervalos de confiança e apresentados
-em tabelas e gráficos. Entre as ameaças à validade, o sistema é uma aplicação
-que apenas se parece com um sistema de produção: seus requisitos têm
-semelhanças com os reais, mas há muitos outros requisitos e implementações em
-ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
+Os resultados são analisados por médias e intervalos de confiança e apresentados em tabelas e
+gráficos. Entre as ameaças à validade, o sistema é uma aplicação que apenas se parece com um
+sistema de produção: seus requisitos têm semelhanças com os reais, mas há muitos outros requisitos
+e implementações em ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
 
 \begin{table}[htb]
   \centering
@@ -180,26 +249,24 @@ ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
     \hline
     Atividade & 2026 & \multicolumn{4}{c}{2027} \\
     \cline{2-2}\cline{3-6}
-     & dez. & jan. & fev. & mar. & abr. \\
+    & dez. & jan. & fev. & mar. & abr. \\
     \hline
     Apresentação do TCC01 & X &  &  &  &  \\
     Implementação do sistema & X & X & X &  &  \\
-    Instrumentação do sistema &  &  &  & X &  \\
+    Instrumentação do sistema &  &  & X &  &  \\
     Experimentos &  &  &  & X &  \\
     Análise dos resultados e escrita do TCC02 &  &  &  &  & X \\
     Apresentação do TCC02 &  &  &  &  & X \\
     \hline
   \end{tabular}
+  \fonte{}
 \end{table}
 
+\subsection{Ameaças à viabilidade}
 
-%% FLuxo de trabalho para completar os passos
-
-%%Na proposta tem que ser o mais específico
-
-
-
-%% ameaças a viabilidade
-4=%% reconsiderações financais para reto
-
-
+O cronograma só se sustenta se a implementação fechar em fevereiro, mês em que a instrumentação
+também começa. O risco principal é o tamanho do sistema: seis serviços, dois bancos, o Redis, o
+Envoy e o k3s no mesmo nó. Se essa base atrasar, março não chega a medir a cadeia de compra, que é
+o objeto do experimento. O segundo risco é concentrar as quatro configurações, as falhas e a carga
+em um único mês. As versões dos componentes ficam fixadas para não gastar esse mês na escolha das
+ferramentas. Não há, neste plano, tempo para reescrever o sistema depois dos primeiros resultados.
