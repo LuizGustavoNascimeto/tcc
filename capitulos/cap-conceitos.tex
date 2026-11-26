@@ -20,13 +20,13 @@ executa em seu próprio processo, expõe uma interface bem definida e pode ser i
 mantido de forma independente dos demais, inclusive com tecnologias e bancos de dados próprios
 \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
 
-Resta definir quão pequeno deve ser um serviço. Não há um tamanho absoluto: as fronteiras costumam
+O tamanho de um serviço não é definido de forma absoluta: as fronteiras costumam
 seguir as capacidades do negócio, de modo que cada serviço concentre uma responsabilidade coesa e
 seja o único dono dos seus dados \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
 Serviços grandes demais perdem a autonomia e voltam a se comportar como um monólito, e serviços
 pequenos demais multiplicam as chamadas pela rede e a complexidade de operar o sistema. A
 decomposição é, portanto, um compromisso, e a arquitetura compensa a complexidade adicional apenas
-em sistemas grandes o bastante para se beneficiar da escalabilidade e da autonomia que ela oferece.
+em sistemas suficientemente grandes para se beneficiar da escalabilidade e da autonomia que ela oferece.
 O sistema avaliado neste trabalho segue essa lógica, com serviços separados por responsabilidade
 (Capítulo~\ref{cap:proposta}).
 
@@ -38,11 +38,11 @@ envolve transmissão, serialização dos dados e cópia entre buffers
 \cite{DistributedSystems:2013}. Assim, o custo de cada chamada deixa de ser desprezível, e a forma
 como os serviços se comunicam passa a influenciar diretamente o desempenho. A segunda são as falhas
 parciais: os componentes podem falhar de forma independente enquanto os demais continuam em
-funcionamento, e o cliente não consegue distinguir se a ausência de resposta vem de uma falha no
-servidor ou na rede \cite{DistributedSystems:2013}. Por isso, o sistema precisa ser projetado para
+funcionamento, e o cliente não consegue distinguir se a ausência de resposta decorre de uma falha no
+servidor ou na rede \cite{DistributedSystems:2013}. Portanto, o sistema precisa ser projetado para
 detectar e tolerar falhas, e não apenas evitá-las.
 
-A distribuição dos dados traz ainda um terceiro desafio. Como cada serviço é dono do próprio banco,
+A distribuição dos dados introduz um terceiro desafio. Como cada serviço é dono do próprio banco,
 uma operação de negócio que atravessa vários serviços não pode contar com uma única transação
 atômica. A consistência passa a depender de outras estratégias, como uma sequência de transações
 locais com ações compensatórias em caso de falha, conhecida como \textit{saga}
@@ -54,10 +54,10 @@ respondida, enquanto na assíncrona o envio não é bloqueante e o processo de o
 que a mensagem é copiada para o buffer local \cite{DistributedSystems:2013}. Nos modelos
 cliente-servidor baseados em requisição e resposta, a comunicação é tipicamente síncrona: o cliente
 envia a requisição e aguarda o resultado antes de continuar, e a própria resposta funciona como
-confirmação de que a operação foi concluída \cite{DistributedSystems:2013}. Por isso, a lentidão ou
+confirmação de que a operação foi concluída \cite{DistributedSystems:2013}. Portanto, a lentidão ou
 a falha de um serviço se propaga ao longo da cadeia de chamadas.
 
-É importante distinguir, entretanto, o comportamento da chamada do ponto de vista da aplicação dos
+O comportamento da chamada, do ponto de vista da aplicação, distingue-se dos
 mecanismos internos utilizados pela biblioteca cliente. Nas chamadas síncronas, o processo que
 invoca o método RPC aguarda sua conclusão, seja pelo recebimento da resposta, seja pela ocorrência
 de uma falha. Internamente, porém, a biblioteca pode utilizar mecanismos orientados a eventos para
@@ -119,15 +119,15 @@ aguarda indefinidamente por um servidor que não responde, e a falha ocorre rapi
 
 Os \textit{retries} reenviam uma chamada que terminou com falha. Eles são configurados por método,
 na configuração de serviço, com o número máximo de tentativas, os parâmetros do \textit{backoff}
-exponencial e os códigos de status que permitem uma nova tentativa. Os \textit{retries} só ocorrem
+exponencial e os códigos de status que permitem uma nova tentativa. Os \textit{retries} ocorrem somente
 dentro do prazo do \textit{deadline} \cite{gRPC-Retry:2026}. Para evitar a sobrecarga do servidor,
 o gRPC também oferece o \textit{retry throttling}: quando a proporção de falhas em relação a
 sucessos passa de um limite, o cliente deixa de retransmitir \cite{gRFC-A6:2024}. A especificação
 também descreve o \textit{hedging}, em que o cliente envia cópias da mesma chamada em paralelo, mas
 esse mecanismo não está implementado no gRPC-Go \cite{gRFC-A6:2024}, biblioteca utilizada neste
-trabalho, e por isso fica fora do escopo da avaliação.
+trabalho, e, portanto, permanece fora do escopo da avaliação.
 
-Por fim, o \textit{keepalive} verifica periodicamente se a conexão ainda funciona, enviando quadros
+Por fim, o \textit{keepalive} verifica periodicamente se a conexão permanece operacional, enviando quadros
 PING do HTTP/2. Se o par não confirmar o recebimento dentro de um prazo, a conexão é encerrada
 \cite{gRPC-Keepalive:2026}. Por padrão, o \textit{keepalive} é desativado no cliente, e seus
 parâmetros devem estar de acordo com os do servidor, que pode encerrar a conexão de clientes cujos
@@ -137,14 +137,14 @@ equilíbrio é o objeto de avaliação deste trabalho.
 
 \subsection{Segurança}\label{sec:seguranca-grpc}
 
-O gRPC não cifra a comunicação por conta própria. Em produção, as mensagens devem trafegar com
+O gRPC não cifra a comunicação por si só. Em produção, as mensagens devem trafegar com
 TLS, os serviços só devem responder em portas seguras, os detalhes de uma exceção não devem voltar
 ao cliente e o tamanho das mensagens de entrada deve ser limitado, pois elas são carregadas na
 memória \cite{gRPC-Security:2026}. Entre serviços, o mTLS exige certificado dos dois lados
 \cite{OWASP-gRPC-Security:2026}. Esses controles são recomendações do ecossistema gRPC, e não
-medidas tiradas de um experimento com gRPC-Go.
+medidas obtidas em um experimento com gRPC-Go.
 
-O \textit{deadline} também limita quanto tempo um servidor fica ocupado com uma chamada. Os
+O \textit{deadline} também limita quanto tempo um servidor permanece ocupado com uma chamada. Os
 \textit{retries} podem multiplicar, no servidor, a carga originada por poucas
 chamadas do cliente \cite{OWASP-gRPC-Security:2026,gRFC-A6:2024}. A autenticação por token e a
 autorização por método protegem o serviço \cite{OWASP-gRPC-Security:2026}; neste trabalho elas
@@ -166,7 +166,7 @@ Outros trabalhos examinam o custo de intermediários na comunicação.
 carga gRPC adiciona cerca de 1~ms por chamada e consome mais CPU e memória do que o balanceamento
 no cliente. \citeonline{RethinkingRPC:2025} apontam o empilhamento de protocolos e os
 \textit{sidecars} como fontes de latência e consumo de CPU, e propõem uma pilha RPC compilada, com
-descarregamento de funções de rede para eBPF e hardware programável. Esse custo é relevante aqui,
+descarregamento de funções de rede para eBPF e hardware programável. Esse custo é relevante neste trabalho,
 pois o Envoy também intermedeia as chamadas, mas nenhum dos dois avalia os mecanismos do próprio gRPC.
 
 Por fim, há trabalhos voltados à resiliência. \citeonline{ResilienceBench-Operator:2025} propõem
@@ -217,12 +217,12 @@ A Tabela~\ref{tab:trabalhos-relacionados} resume os trabalhos discutidos.
   \fonte{}
 \end{table}
 
-Na tabela~\ref{tab:trabalhos-relacionados}, as colunas indicam se cada trabalho avalia o desempenho
+Na Tabela~\ref{tab:trabalhos-relacionados}, as colunas indicam se cada trabalho avalia o desempenho
 da comunicação, a resiliência sob falhas, a segurança e os mecanismos nativos do gRPC
 (\textit{deadlines}, \textit{retries} e \textit{keepalive}). O foco de cada estudo aparece na
 segunda coluna. Cada trabalho trata de um aspecto isolado. \citeonline{Retry-Experiment:2023} medem
 o padrão de \textit{retry} em outra \textit{stack}, com Resilience4j e Polly, e não no gRPC-Go.
-Este trabalho pretende avaliar, em gRPC-Go, esses três mecanismos sob carga e sob falha injetada, e
+Este trabalho propõe avaliar, em gRPC-Go, esses três mecanismos sob carga e sob falha injetada, e
 o fator de amplificação das retransmissões. Não se encontrou essa avaliação conjunta nos trabalhos revisados.
 
 

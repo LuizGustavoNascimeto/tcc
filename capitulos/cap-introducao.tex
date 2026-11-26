@@ -8,7 +8,7 @@ evolução contínua do sistema \cite{MicroserviceArchitecture:2016}. Essa decom
 o sistema inerentemente distribuído: chamadas antes locais passam a atravessar a rede, trazendo
 desafios de latência, falhas parciais, consistência de dados e segurança na comunicação
 \cite{BuildingMicroservices:2015}. Assim, a arquitetura compensa a complexidade adicional apenas
-quando o sistema é grande o bastante para se beneficiar de sua escalabilidade e autonomia.
+quando o sistema é suficientemente grande para se beneficiar de sua escalabilidade e autonomia.
 
 Nesse cenário, a escolha do mecanismo de comunicação entre serviços torna-se uma decisão
 arquitetural central. Entre as alternativas, destaca-se o RPC, que permite invocar procedimentos em
@@ -22,7 +22,7 @@ Para lidar com a latência e as falhas parciais da comunicação, o gRPC oferece
 configuráveis: os \textit{deadlines} limitam o tempo de espera de uma chamada, os \textit{retries}
 reenviam chamadas que falham e o \textit{keepalive} detecta conexões interrompidas
 \cite{gRPC-Documentation:2026}. Esses mecanismos,
-porém, não são gratuitos: cada tentativa adicional consome capacidade do servidor, e uma
+porém, não são isentos de custo: cada tentativa adicional consome capacidade do servidor, e uma
 configuração inadequada pode sobrecarregá-lo em vez de protegê-lo \cite{gRFC-A6:2024}.
 
 \section{Problema de Pesquisa}
@@ -38,7 +38,7 @@ estudos existentes tendem a isolar um aspecto, seja o desempenho do protocolo, o
 \cite{ResilienceBench-Operator:2025}, o que deixa em aberto como os mecanismos nativos do gRPC se
 comportam quando o sistema está sob carga e sob falha ao mesmo tempo.
 
-Diante disso, a pergunta que orienta este trabalho é: qual o efeito dos \textit{deadlines},
+A pergunta que orienta este trabalho é: qual o efeito dos \textit{deadlines},
 \textit{retries} e \textit{keepalive} do gRPC-Go sobre a latência, a vazão e a disponibilidade de
 um \textit{marketplace} de microsserviços sob carga e sob falha injetada, e em que condição a
 retransmissão passa a prejudicar o tráfego legítimo?

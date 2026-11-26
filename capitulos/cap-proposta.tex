@@ -19,14 +19,14 @@ A Figura~\ref{fig:arquitetura-sistema} apresenta a arquitetura do sistema. Nela,
 representam serviços, os vermelhos, bancos de dados, e o roxo, proxy. As setas tracejadas
 simbolizam rotas públicas, e as setas contínuas representam rotas com proteção de autenticação
 (privadas). O cliente, que no experimento é o k6, envia as requisições ao \textit{gateway}, que as
-encaminha ao Envoy, e é do \textit{gateway} para baixo que a comunicação usa mTLS. O Envoy
+encaminha ao Envoy, e a comunicação a partir do \textit{gateway} utiliza mTLS. O Envoy
 distribui as chamadas aos serviços. As rotas públicas são o login, atendido pelo serviço de
 autenticação, a consulta de itens, atendida pelo inventário, e a busca. As demais são privadas: o
 perfil, atendido pelo serviço de usuários, o gerenciamento de itens, atendido pelo inventário, e a
 compra. Nas rotas privadas, o \textit{gateway} consulta o serviço de autenticação para validar o token JWT
 antes de encaminhar a chamada. A compra, por sua vez, revalida o token junto ao serviço de autenticação,
 atualiza o estoque no inventário e cobra o valor no serviço de pagamento. Cada serviço acessa o
-banco de dados que lhe cabe, e a compra, o inventário e a busca usam ainda o Redis, detalhado adiante.
+banco de dados correspondente, e a compra, o inventário e a busca utilizam também o Redis, detalhado adiante.
 
 \begin{figure}[htb]
   \caption{Arquitetura do sistema}
@@ -41,8 +41,8 @@ OWASP-gRPC-Security:2026}: TLS na entrada, mTLS entre os serviços, \textit{refl
 limite de tamanho nas mensagens de entrada. A autenticação é feita pelo serviço de autenticação,
 que emite tokens JWT no login e os valida. A consulta de itens do inventário e a busca são
 públicas, e todas as demais operações exigem um token válido e a permissão do papel do usuário para
-o método. Além disso, os serviços verificam o pertencimento do recurso: um usuário autenticado só
-acessa os pedidos, pagamentos e dados que são seus, e não os de outro usuário. Com isso, a
+o método. Além disso, os serviços verificam o pertencimento do recurso: um usuário autenticado
+acessa somente os pedidos, pagamentos e dados que são seus, e não os de outro usuário. Assim, a
 comunicação é cifrada, os serviços se autenticam entre si, cada cliente acessa apenas o que seu
 papel e a posse dos recursos permitem, a interface do serviço não é exposta e o consumo de memória
 por mensagem é limitado.
@@ -51,7 +51,7 @@ Três fluxos de negócio compõem a carga: gerenciar o inventário, buscar itens
 pública, e o gerenciamento do inventário e a compra exigem autenticação. A compra é o fluxo
 central, pois é uma transação distribuída (bloqueio do carrinho, atualização de estoque e
 pagamento, com \textit{rollback} em caso de falha) que atravessa vários serviços, inclusive o de
-autenticação. Ela gera a cadeia de chamadas mais profunda e é o ponto natural para a injeção de falhas.
+autenticação. Ela gera a cadeia de chamadas mais profunda e constitui o cenário adotado para a injeção de falhas.
 
 A Figura~\ref{fig:sequencia-compra} detalha esse fluxo em 25 passos. As setas contínuas representam
 chamadas tratadas como síncronas, e as tracejadas, chamadas tratadas como assíncronas. Os passos são
@@ -67,27 +67,27 @@ os seguintes:
 
 \begin{enumerate}
   \item O cliente envia ao \textit{gateway} a requisição de compra, com o token JWT.
-  \item O \textit{gateway} pede ao serviço de autenticação que valide o token.
+  \item O \textit{gateway} solicita ao serviço de autenticação que valide o token.
   \item O serviço de autenticação devolve a identidade e o papel do usuário.
   \item O \textit{gateway} encaminha ao serviço de compra o início da compra, com o token.
   \item A compra solicita ao Redis um \textit{lock} com TTL.
   \item O Redis confirma que o \textit{lock} foi obtido.
-  \item A compra pede ao inventário que reserve o estoque.
+  \item A compra solicita ao inventário que reserve o estoque.
   \item O inventário registra um \textit{ticket} no MongoDB.
   \item O inventário informa que o estoque foi reservado.
   \item A compra cria o pedido do usuário no PostgreSQL.
   \item A compra revalida o token junto ao serviço de autenticação.
   \item O serviço de autenticação devolve o resultado da validação.
-  \item Se o token é válido, a compra pede o pagamento ao serviço de pagamento.
+  \item Se o token é válido, a compra solicita o pagamento ao serviço de pagamento.
   \item O serviço de pagamento devolve o resultado do pagamento.
   \item Se o pagamento foi aprovado, a compra confirma o pedido.
-  \item Se o pagamento falhou, a compra pede ao inventário que devolva o estoque.
+  \item Se o pagamento falhou, a compra solicita ao inventário que devolva o estoque.
   \item O inventário informa que o estoque foi devolvido.
   \item A compra cancela o pedido.
-  \item Se o token é inválido, a compra pede ao inventário que devolva o estoque.
+  \item Se o token é inválido, a compra solicita ao inventário que devolva o estoque.
   \item O inventário informa que o estoque foi devolvido.
   \item A compra cancela o pedido.
-  \item Em qualquer desfecho, a compra pede ao Redis que libere o \textit{lock}.
+  \item Em qualquer desfecho, a compra solicita ao Redis que libere o \textit{lock}.
   \item O Redis informa que o \textit{lock} foi liberado.
   \item A compra devolve o resultado ao \textit{gateway}.
   \item O \textit{gateway} devolve o resultado ao cliente.
@@ -98,12 +98,12 @@ conforme o resultado do pagamento, o passo 15 ou os passos 16 a 18, e quando o t
 ocorrem os passos 19 a 21. A devolução do estoque e o cancelamento do pedido compõem o
 \textit{rollback} da compra.
 
-Os dados ficam em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O inventário
-e as requisições de compra (\textit{tickets}) ficam no MongoDB (NoSQL), e os pedidos de compra, os
-pagamentos, os usuários e os tokens ficam no PostgreSQL (SQL). Cada banco tem uma única
+Os dados são armazenados em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O inventário
+e as requisições de compra (\textit{tickets}) são armazenados no MongoDB (NoSQL), e os pedidos de compra, os
+pagamentos, os usuários e os tokens são armazenados no PostgreSQL (SQL). Cada banco tem uma única
 instância, com esquemas ou coleções separados por serviço. Além deles, o sistema usa o Redis, um
 banco de dados em memória, como cache do inventário nas buscas e como \textit{lock} distribuído com
-TTL durante a compra, o que evita um bloqueio preso se o serviço falhar.
+TTL durante a compra, o que evita que um bloqueio permaneça ativo caso o serviço falhe.
 
 \begin{figure}[htb]%% Ambiente figure
   %\captionsetup{width=0.55\textwidth}%% Largura da legenda
@@ -122,11 +122,11 @@ que permite verificar o pertencimento. Um usuário pode ter vários tokens (1:N)
 
 \section{Infraestrutura e ambiente}
 
-O experimento roda em duas VPS da Contabo com Ubuntu 24.04, cada uma com 4~vCPUs e 8~GB de memória.
+O experimento é executado em duas VPS da Contabo com Ubuntu 24.04, cada uma com 4~vCPUs e 8~GB de memória.
 Uma executa o sistema, e a outra executa a geração de carga (k6) e a observabilidade (Prometheus e
 Grafana), de modo que o gerador de carga não compete por recursos com o sistema testado. As
 métricas do sistema são coletadas pelo Prometheus, e as métricas do lado do cliente, pelo k6. As
-versões ficam fixadas: Go 1.26.11, gRPC-Go 1.85.0, Envoy 1.40.2, k3s 1.37.2, Chaos Mesh 2.8.8,
+versões são fixadas: Go 1.26.11, gRPC-Go 1.85.0, Envoy 1.40.2, k3s 1.37.2, Chaos Mesh 2.8.8,
 k6 2.4.0 e Prometheus 3.13.5. O Prometheus usa a série de suporte longo; as demais são a versão
 estável atual da linha escolhida. Para garantir a
 reprodutibilidade, o código e os arquivos de configuração serão publicados em um repositório no GitHub.
@@ -142,7 +142,7 @@ A hipótese central do trabalho é que os mecanismos nativos do gRPC contribuem 
 a disponibilidade do sistema, mas com custos que variam conforme a carga e o tipo de falha. Para
 avaliá-la, o sistema é executado em quatro configurações progressivas dos mecanismos
 (Tabela~\ref{tab:configuracoes}). O \textit{keepalive} é também variado nos cenários de falha de
-conexão. Os mecanismos valem para todos os clientes gRPC do sistema, inclusive para as chamadas ao
+conexão. Os mecanismos aplicam-se a todos os clientes gRPC do sistema, inclusive para as chamadas ao
 serviço de autenticação. Validar um token é uma leitura, de modo que repeti-la não tem efeito colateral.
 
 \begin{table}[htb]
@@ -161,7 +161,7 @@ serviço de autenticação. Validar um token é uma leitura, de modo que repeti-
   \fonte{}
 \end{table}
 
-Os \textit{deadlines} valem o dobro do tempo médio de resposta de cada serviço em operação normal.
+Os \textit{deadlines} correspondem ao dobro do tempo médio de resposta de cada serviço em operação normal.
 Nos \textit{retries}, o número máximo de tentativas é 4 (a original mais três retentativas), com o
 \textit{backoff} exponencial do gRPC.
 
@@ -203,19 +203,17 @@ momento da injeção em um manifesto versionado, o que permite repeti-lo nas qua
 O MTTR é medido da seguinte forma. A falha é considerada iniciada quando a taxa de requisições com
 erro ultrapassa um limiar, definido a partir das métricas obtidas em momentos de pico de carga, e é
 considerada resolvida quando o sistema volta a responder dentro desse limiar por 10 segundos
-consecutivos. A disponibilidade é a proporção de requisições bem-sucedidas em relação ao total.
-
-A disponibilidade é a proporção de requisições bem-sucedidas em relação ao total, calculada
-separadamente para as operações públicas e para as protegidas. Como a consulta de itens e a busca
-não dependem da autenticação, uma falha no serviço de autenticação afeta apenas as operações
-protegidas, e o cálculo conjunto a esconderia.
+consecutivos. A disponibilidade é a proporção de requisições bem-sucedidas em relação ao total,
+calculada separadamente para as operações públicas e para as protegidas. Como a consulta de itens e
+a busca não dependem da autenticação, uma falha no serviço de autenticação afeta somente as
+operações protegidas, e o cálculo conjunto a esconderia.
 
 \section{Análise de segurança}
 
-A pergunta da análise de segurança é se os mecanismos que protegem o sistema contra falhas
-continuam protegendo quando a falha é provocada por tráfego abusivo. Os \textit{retries}
+A análise de segurança verifica se os mecanismos que protegem o sistema contra falhas
+continuam a protegê-lo quando a falha é provocada por tráfego abusivo. Os \textit{retries}
 multiplicam as chamadas que chegam aos serviços, de modo que um sistema já
-sobrecarregado pode ser levado ao colapso pela própria retransmissão \cite{Retry-Experiment:2023}.
+sobrecarregado pode ser levado à saturação pela própria retransmissão \cite{Retry-Experiment:2023}.
 O TLS, o mTLS e o controle de acesso da Seção~\ref{sec:sistema} compõem o sistema e não são
 comparados entre as configurações, mas as chamadas ao serviço de autenticação sofrem o efeito dos
 mecanismos e entram nas medições.
@@ -223,14 +221,14 @@ mecanismos e entram nas medições.
 Sobre a carga legítima aplica-se um tráfego abusivo de intensidade crescente, nas configurações (a)
 e (d). Em cada uma, registram-se a disponibilidade e a latência do tráfego legítimo e o fator de
 amplificação, isto é, a razão entre as chamadas recebidas pelos serviços e as originadas pelos
-clientes. Como esse fator é limitado pelo número máximo de tentativas, o que se observa é em que
+clientes. Como esse fator é limitado pelo número máximo de tentativas, observa-se em que
 nível de carga ele se aproxima desse limite e quando o \textit{retry throttling} o reduz. Se a
 configuração (d) apresentar disponibilidade menor que a (a), os mecanismos agravam o ataque, e se
 apresentar maior, o atenuam.
 
 \section{Ponto de ruptura}
 
-O ponto de ruptura é buscado nas configurações (a) e (d), para comparar o sistema sem mecanismos
+O ponto de ruptura é determinado nas configurações (a) e (d), para comparar o sistema sem mecanismos
 com o sistema com todos eles. A carga é aumentada em rampa, de 100 requisições por segundo a cada
 10 segundos, até que o sistema deixe de atender aos critérios: p99 acima de 500~ms ou taxa de erro
 acima de 1\%. O gargalo é identificado pelas métricas de CPU, memória, rede e latência do Prometheus e do k6.
@@ -238,9 +236,9 @@ acima de 1\%. O gargalo é identificado pelas métricas de CPU, memória, rede e
 \section{Análise dos dados e cronograma}
 
 Os resultados são analisados por médias e intervalos de confiança e apresentados em tabelas e
-gráficos. Entre as ameaças à validade, o sistema é uma aplicação que apenas se parece com um
-sistema de produção: seus requisitos têm semelhanças com os reais, mas há muitos outros requisitos
-e implementações em ambientes reais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
+gráficos. Entre as ameaças à validade, o sistema é uma aplicação que se assemelha a um
+sistema de produção: seus requisitos apresentam semelhanças com os reais, embora ambientes reais
+incluam requisitos e implementações adicionais. O cronograma é apresentado na Tabela~\ref{tab:cronograma}.
 
 \begin{table}[htb]
   \centering
@@ -264,9 +262,9 @@ e implementações em ambientes reais. O cronograma é apresentado na Tabela~\re
 
 \subsection{Ameaças à viabilidade}
 
-O cronograma só se sustenta se a implementação fechar em fevereiro, mês em que a instrumentação
-também começa. O risco principal é o tamanho do sistema: seis serviços, dois bancos, o Redis, o
-Envoy e o k3s no mesmo nó. Se essa base atrasar, março não chega a medir a cadeia de compra, que é
-o objeto do experimento. O segundo risco é concentrar as quatro configurações, as falhas e a carga
-em um único mês. As versões dos componentes ficam fixadas para não gastar esse mês na escolha das
-ferramentas. Não há, neste plano, tempo para reescrever o sistema depois dos primeiros resultados.
+O cronograma depende da conclusão da implementação em fevereiro, mês em que a instrumentação
+também se inicia. O risco principal é a extensão do sistema: seis serviços, dois bancos, o Redis, o
+Envoy e o k3s no mesmo nó. Se essa base atrasar, os experimentos de março não abrangem a cadeia de
+compra, objeto do experimento. O segundo risco é concentrar as quatro configurações, as falhas e a
+carga em um único mês. As versões dos componentes são fixadas para não consumir esse mês na escolha
+das ferramentas. Neste plano, não há tempo para reescrever o sistema após os primeiros resultados.
