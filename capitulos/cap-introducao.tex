@@ -11,9 +11,9 @@ desafios de latência, falhas parciais, consistência de dados e segurança na c
 quando o sistema é suficientemente grande para se beneficiar de sua escalabilidade e autonomia.
 
 Nesse cenário, a escolha do mecanismo de comunicação entre serviços torna-se uma decisão
-arquitetural central. Entre as alternativas, destaca-se o RPC, que permite invocar procedimentos em
+arquitetural central. Entre as alternativas, destaca-se a \gls{rpc}, que permite invocar procedimentos em
 outro serviço como se fossem locais. O gRPC é uma das implementações mais difundidas desse modelo:
-utiliza o HTTP/2 como protocolo de transporte e o \textit{Protocol Buffers} como formato de
+utiliza a \gls{http2} como protocolo de transporte e o \textit{Protocol Buffers} como formato de
 serialização e linguagem de definição de interfaces \cite{gRPC-Introduction:2026}. Em ambientes de
 produção, ele costuma ser usado com o Envoy, um proxy que intermedeia o tráfego entre os serviços
 \cite{Envoy-Documentation:2026}.
@@ -38,51 +38,41 @@ estudos existentes tendem a isolar um aspecto, seja o desempenho do protocolo, o
 \cite{ResilienceBench-Operator:2025}, o que deixa em aberto como os mecanismos nativos do gRPC se
 comportam quando o sistema está sob carga e sob falha ao mesmo tempo.
 
-A pergunta que orienta este trabalho é: qual o efeito dos \textit{deadlines},
-\textit{retries} e \textit{keepalive} do gRPC-Go sobre a latência, a vazão e a disponibilidade de
-um \textit{marketplace} de microsserviços sob carga e sob falha injetada, e em que condição a
-retransmissão passa a prejudicar o tráfego legítimo?
+A pergunta que orienta este trabalho é: qual o efeito dos \textit{deadlines}, \textit{retries} e
+\textit{keepalive} do gRPC, implementado em liguagem Go (gRPC-Go), na latência, vazão e
+disponibilidade de um \textit{marketplace} de microsserviços sob carga e sob falha injetada, e em
+que condição a retransmissão passa a prejudicar o tráfego legítimo?
 
 \section{Objetivos}
 
 O objetivo geral deste trabalho é avaliar o efeito dos \textit{deadlines}, \textit{retries} e
-\textit{keepalive} do gRPC-Go sobre a latência, a vazão e a disponibilidade de um
-\textit{marketplace} de microsserviços, sob carga e sob falha injetada, e identificar em que
-condição a retransmissão passa a prejudicar o tráfego legítimo.
+\textit{keepalive} do gRPC-Go na latência, a vazão e a disponibilidade em um ambiente de
+microsserviços, utilizando como estudo de caso um serviço de marketplace, considerando variação de
+carga e situações de falhas. Dessa forma, pretende-se identificar em que condição a retransmissão
+passa a prejudicar o tráfego legítimo.
+
 
 Para alcançá-lo, definem-se os seguintes objetivos específicos:
 
 \begin{itemize}
-  \item projetar e implementar um sistema de microsserviços em Go, com gRPC e
-    \textit{Protocol Buffers}, inspirado no \textit{system design} de um
-    \textit{marketplace} de comércio eletrônico;
-  \item configurar os \textit{deadlines}, \textit{retries} e
-    \textit{keepalive} do gRPC em configurações progressivas, para comparar o
-    efeito de cada mecanismo;
-  \item mensurar o desempenho sob carga por meio da latência (percentis p50, p90
-    e p99), da vazão (\textit{throughput}) e da saturação dos recursos de
-    hardware (CPU e memória);
-  \item avaliar a tolerância a falhas em cenários de falha induzida, por meio do
-    tempo médio de recuperação (\textit{Mean Time To Recovery}, MTTR) e da taxa
-    de erros, e calcular a disponibilidade resultante como a proporção de
-    requisições bem-sucedidas;
-  \item identificar em que condição a retransmissão passa a prejudicar o tráfego
-    legítimo, medindo a amplificação de carga dos \textit{retries} e a
-    disponibilidade desse tráfego nas configurações sem mecanismos e com todos
-    eles.
+  \item projetar e implementar um sistema de microsserviços em Go, com gRPC e \textit{Protocol
+    Buffers}, inspirado no projeto de um serviço de um \textit{marketplace} de comércio eletrônico;
+  \item analisar os impactos no desempenho e disponiblidade  do serviço sob diferentes
+    configurações de \textit{deadlines}, \textit{retries} e \textit{keepalive} do gRPC;
+  \item avaliar o desempenho sob carga considerando a latência, vazão e saturação de recursos de hardware.
+  \item avaliar a tolerância a falhas no serviço em cenários de falha induzida.
 \end{itemize}
 
 \section{Justificativa}
 
-Os mecanismos do gRPC são usados com frequência, mas seu custo e seu efeito sob carga e sob falha
-raramente são medidos em conjunto. Este trabalho mede esses efeitos em um único sistema, com
-desempenho, tolerância a falhas e segurança avaliados nas mesmas condições. O
+O gRPC proporciona mecanismos de tolerância a falhas prontos para uso, mas seu custo e seu efeito
+sob carga e sob falha raramente são medidos em conjunto. Este trabalho mede esses efeitos em um
+único sistema, com desempenho, tolerância a falhas e segurança avaliados nas mesmas condições. O
 \textit{marketplace} foi escolhido porque a compra é uma transação distribuída que atravessa vários
 serviços, o que permite observar o efeito dos mecanismos em uma cadeia de chamadas.
 
 \section{Organização do Texto}
 
-O Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos e os trabalhos
-relacionados (Seção~\ref{sec:trabalhos:relacionados}). O Capítulo~\ref{cap:proposta}
-descreve a proposta de avaliação. O Capítulo~\ref{cap:consideracoes} reúne as
-considerações finais.
+O Capítulo~\ref{cap:fundamentacaoTeorica} apresenta os conceitos e os trabalhos relacionados. O
+Capítulo~\ref{cap:proposta} descreve a proposta de pesquisa. O Capítulo~\ref{cap:consideracoes}
+reúne as considerações finais.

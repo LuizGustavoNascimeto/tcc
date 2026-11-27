@@ -106,6 +106,34 @@
 % \makenoidxglossaries
 \usepackage{glossaries}
 \makeglossaries
+% glossaries atual trocou \glossarystyle por \setglossarystyle; a classe ainda chama o nome antigo.
+\providecommand\glossarystyle{\setglossarystyle}
+% morewrites (carregado pela classe) reabre main.acn2 no fim e apaga as entradas.
+% A lista sai direto das siglas definidas em entradas-siglas.tex, na ordem de definição.
+\newcommand{\utfprsiglaprint}[1]{%
+  \glstarget{#1}{\glossentryname{#1}} &
+  \glossentrydesc{#1}\tabularnewline
+}
+\newcommand{\utfprsiglaadd}[1]{%
+  \ifcsname utfprsiglaseen@#1\endcsname\else
+    \global\expandafter\let\csname utfprsiglaseen@#1\endcsname\empty
+    \gappto\utfprsiglarows{\utfprsiglaprint{#1}}%
+  \fi
+}
+\renewcommand{\imprimirlistadeacronimos}{%
+  \gdef\utfprsiglarows{}%
+  \forglsentries[\pseudoacronymtype]{\thisglsentry}{%
+    \expandafter\utfprsiglaadd\expandafter{\thisglsentry}%
+  }%
+  \pretextualchapter{\nomelistadeacronimos}%
+  \begin{Spacing}{1}%
+  \noindent
+  \begin{longtable}{@{}p{25mm}@{}p{\dimexpr\textwidth-25mm\relax}@{}}%
+  \utfprsiglarows
+  \end{longtable}%
+  \end{Spacing}%
+  \cleardoublepage
+}
 
 % para siglas em português
 \newcommand{\siglaPt}[2]

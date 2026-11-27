@@ -1,40 +1,94 @@
-%%%% LISTA DE ABREVIATURAS E SIGLAS 
+%%%% LISTA DE ABREVIATURAS E SIGLAS
 %%
-%% Relação, em ordem alfabética, das abreviaturas (representação de uma palavra por meio de alguma(s) de sua(s) sílaba(s) ou
-%% letra(s)), siglas (conjunto de letras iniciais dos vocábulos e/ou números que representa um determinado nome) e acrônimos
-%% (conjunto de letras iniciais dos vocábulos e/ou números que representa um determinado nome, formando uma palavra pronunciável).
-%%
-%% Este arquivo para definição de abreviaturas, siglas e acrônimos é utilizado com a opção "glossaries" (pacote)
+%% Relação alfabética das siglas. A lista impressa sai de \incluirlistadeacronimos{glossaries}:
+%% só entra sigla citada com \gls ou \glspl. A primeira citação no texto expande a forma longa;
+%% a lista usa o campo description.
+%% gRPC não é sigla neste trabalho e não tem entrada aqui.
 
 %% Abreviaturas: \abreviatura{rótulo}{representação}{definição}
-
 %\abreviatura{art.}{art.}{Artigo}
-%\abreviatura{cap.}{cap.}{Capítulo}
-%\abreviatura{sec.}{sec.}{Seção}
 
-%% Siglas: \sigla{rótulo}{representação}{definição}
+%% Siglas. O tipo "sigla" precisa estar na lista de acrônimos antes do primeiro \newacronym,
+%% senão \gls não expande na primeira citação.
+\DeclareAcronymList{sigla}
 
-%% A lista ativa deste trabalho está em lista-acronimos.tex (opção "file").
+\newacronym[type=\pseudoacronymtype, sort={CPU},
+  description={Unidade Central de Processamento, do inglês \textit{Central Processing Unit}}]
+  {cpu}{CPU}{unidade central de processamento, do inglês \textit{Central Processing Unit}}
 
-%\sigla{abnt}{ABNT}{Associação Brasileira de Normas Técnicas}
-%\sigla{cnpq}{CNPq}{Conselho Nacional de Desenvolvimento Científico e Tecnológico}
-%\sigla{eps}{EPS}{\textit{Encapsulated PostScript}}
-%\sigla{pdf}{PDF}{Formato de Documento Portátil, do inglês \textit{Portable Document Format}}
-%\sigla{ps}{PS}{\textit{PostScript}}
-%\sigla{utfpr}{UTFPR}{Universidade Tecnológica Federal do Paraná}
+\newacronym[type=\pseudoacronymtype, sort={EBPF},
+  description={Filtro de Pacotes Berkeley estendido, do inglês \textit{extended Berkeley Packet Filter}}]
+  {ebpf}{eBPF}{filtro de pacotes Berkeley estendido, do inglês \textit{extended Berkeley Packet Filter}}
 
+\newacronym[type=\pseudoacronymtype, sort={GRAPHQL},
+  description={Linguagem de consulta e manipulação de dados, do inglês \textit{Graph Query Language}}]
+  {graphql}{GraphQL}{linguagem de consulta e manipulação de dados, do inglês \textit{Graph Query Language}}
 
-%% LEIA:
+\newacronym[type=\pseudoacronymtype, sort={HPACK},
+  description={Algoritmo de compressão de cabeçalhos do HTTP/2}]
+  {hpack}{HPACK}{algoritmo de compressão de cabeçalhos do HTTP/2}
 
-%% Para usar o \gls, você deve colocar a sigla aqui em \sigla
+\newacronym[type=\pseudoacronymtype, sort={HTTP},
+  description={Protocolo de Transferência de Hipertexto, do inglês \textit{Hypertext Transfer Protocol}}]
+  {http}{HTTP}{protocolo de transferência de hipertexto, do inglês \textit{Hypertext Transfer Protocol}}
 
-%% ADICIONAR SIGLAS: Quando você inclui alguma sigla, pode ser necessário compilar umas duas vezes para essa aparecer na lista de siglas.
+\newacronym[type=\pseudoacronymtype, sort={HTTP2},
+  description={Versão 2 do protocolo de transferência de hipertexto, do inglês \textit{Hypertext Transfer Protocol}}]
+  {http2}{HTTP/2}{versão 2 do protocolo de transferência de hipertexto, do inglês \textit{Hypertext Transfer Protocol}}
 
-%% ATENÇÃO REMOVER SIGLAS: se você remover a sigla do seu texto (não for usar mais), você deve comentar essa aqui e remover os \gls{} dessa sigla (se não vai ficar aparecendo a sigla na lista). Em caso de ERRO, quando o LaTeX informa que você ainda tem a sigla no texto, mesmo que não tenha. Você deve limpar o cache - no OverLeaf, clique no erro, vá:
-%  ->view error
-%%   ->(role para baixo, até o final)
-%%     ->e clique em Clear cached files
+\newacronym[type=\pseudoacronymtype, sort={JWT},
+  description={Token Web JSON, do inglês \textit{JSON Web Token}}]
+  {jwt}{JWT}{token web JSON, do inglês \textit{JSON Web Token}}
 
+\newacronym[type=\pseudoacronymtype, sort={L7},
+  description={Camada 7 (aplicação) do modelo OSI}]
+  {l7}{L7}{camada 7, de aplicação, do modelo OSI}
+
+\newacronym[type=\pseudoacronymtype, sort={MTLS},
+  description={TLS mútuo, em que cliente e servidor se autenticam por certificados, do inglês \textit{mutual Transport Layer Security}}]
+  {mtls}{mTLS}{TLS mútuo, do inglês \textit{mutual Transport Layer Security}}
+
+\newacronym[type=\pseudoacronymtype, sort={MTTR},
+  description={Tempo médio de recuperação, do inglês \textit{Mean Time To Recovery}}]
+  {mttr}{MTTR}{tempo médio de recuperação, do inglês \textit{Mean Time To Recovery}}
+
+\newacronym[type=\pseudoacronymtype, sort={NOSQL},
+  description={Não somente SQL, do inglês \textit{Not Only SQL}}]
+  {nosql}{NoSQL}{não somente SQL, do inglês \textit{Not Only SQL}}
+
+\newacronym[type=\pseudoacronymtype, sort={RBAC},
+  description={Controle de acesso baseado em papéis, do inglês \textit{Role-Based Access Control}}]
+  {rbac}{RBAC}{controle de acesso baseado em papéis, do inglês \textit{Role-Based Access Control}}
+
+\newacronym[type=\pseudoacronymtype, sort={REST},
+  description={Transferência de Estado Representacional, do inglês \textit{Representational State Transfer}}]
+  {rest}{REST}{transferência de estado representacional, do inglês \textit{Representational State Transfer}}
+
+\newacronym[type=\pseudoacronymtype, sort={RPC},
+  description={Chamada de Procedimento Remoto, do inglês \textit{Remote Procedure Call}}]
+  {rpc}{RPC}{chamada de procedimento remoto, do inglês \textit{Remote Procedure Call}}
+
+\newacronym[type=\pseudoacronymtype, sort={SQL},
+  description={Linguagem de Consulta Estruturada, do inglês \textit{Structured Query Language}}]
+  {sql}{SQL}{linguagem de consulta estruturada, do inglês \textit{Structured Query Language}}
+
+\newacronym[type=\pseudoacronymtype, sort={TCP},
+  description={Protocolo de Controle de Transmissão, do inglês \textit{Transmission Control Protocol}}]
+  {tcp}{TCP}{protocolo de controle de transmissão, do inglês \textit{Transmission Control Protocol}}
+
+\newacronym[type=\pseudoacronymtype, sort={TLS},
+  description={Segurança da Camada de Transporte, do inglês \textit{Transport Layer Security}}]
+  {tls}{TLS}{segurança da camada de transporte, do inglês \textit{Transport Layer Security}}
+
+\newacronym[type=\pseudoacronymtype, sort={TTL},
+  description={Tempo de vida, do inglês \textit{Time To Live}}]
+  {ttl}{TTL}{tempo de vida, do inglês \textit{Time To Live}}
+
+\newacronym[type=\pseudoacronymtype, sort={VPS},
+  description={Servidor Virtual Privado, do inglês \textit{Virtual Private Server}},
+  longplural={servidores virtuais privados, do inglês \textit{Virtual Private Server}},
+  shortplural={VPS}]
+  {vps}{VPS}{servidor virtual privado, do inglês \textit{Virtual Private Server}}
 
 %% Acrônimos: \acronimo{rótulo}{representação}{definição}
 %\acronimo{gimp}{Gimp}{Programa de Manipulação de Imagem GNU, do inglês \textit{GNU Image Manipulation Program}}

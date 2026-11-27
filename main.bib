@@ -41,6 +41,23 @@
   address    = {New York, USA}
 }
 
+@article{RPC-Frameworks-Performance:2026,
+  author   = {Blinowski, Grzegorz and Pełka, Bartłomiej},
+  title    = {Comparative Performance Analysis of RPC Frameworks in Public Cloud Environments},
+  journal  = {Concurrency and Computation: Practice and Experience},
+  volume   = {38},
+  number   = {2},
+  pages    = {e70523},
+  keywords = {distributed computing, performance analysis, public cloud computing, RPC},
+  doi      = {https://doi.org/10.1002/cpe.70523},
+  url      = {https://onlinelibrary.wiley.com/doi/abs/10.1002/cpe.70523},
+  eprint   = {https://onlinelibrary.wiley.com/doi/pdf/10.1002/cpe.70523},
+  abstract = {ABSTRACT Remote procedure call (RPC) technology has become a cornerstone of modern cloud computing, enabling efficient and seamless communication between distributed services. In cloud infrastructures, where scalability, interoperability, and performance are critical, RPC frameworks play a key role in abstracting the complexities of network communication. Despite their ubiquity, relatively little up-to-date empirical research exists on the comparative performance of RPC frameworks across cloud environments. And, to our best knowledge, there is no comparative study in which different cloud platforms and RPC frameworks were directly compared. This paper addresses that gap by presenting the results of a series of experiments evaluating the performance and scalability of four major RPC frameworks—ONC RPC, gRPC, Web-RPC, and JSON-RPC—across the three most widely used cloud platforms: AWS, Azure, and Google Cloud. The experiments were based on a test suite comprising four distinct RPC call types with varying argument sizes and complexities. Each configuration was executed multiple times with client loads ranging from 1 to 8, with 300,000 runs per test. Total call latency was used as the primary performance measure and analyzed statistically. The results reveal a nuanced picture: while ONC RPC consistently delivers the best performance, no other framework or platform emerges as a clear overall leader. Across all cloud environments and workloads, ONC RPC consistently outperformed the other frameworks. It proved to be at least 20\% faster than its nearest competitor and, in some cases, up to four times faster than the second best. By contrast, in short-argument tests, gRPC performed unexpectedly poorly; it often ranked close to or below the text-based frameworks. Particularly surprising was its poor performance under high load in Google Cloud—the platform where it could be expected to perform best. However, gRPC ranked second in the large-argument tests, while text-based frameworks show relatively poor performance as the argument size increases. We discuss and explain these findings in detail and provide guidelines for selecting the most suitable RPC technology for different use cases.},
+  year     = {2026}
+}
+
+
+
 @inproceedings{Retry-Experiment:2023,
   author    = {Aderaldo, Carlos Mendes and Mendonca, Nabor Das Chagas},
   title     = {How The Retry Pattern Impacts Application Performance: A Controlled Experiment},
