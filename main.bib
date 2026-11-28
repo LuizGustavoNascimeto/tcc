@@ -268,3 +268,91 @@
   note          = {gRFC A6. Last updated: 2024-08-23},
   urlaccessdate = {11 nov. 2026}
 }
+
+%% ---------------------------------------------------------------------------
+%% Referências da seção "Ecossistema gRPC" (cap-conceitos.tex).
+%% Cada entrada abaixo foi adicionada por Claude (assistente de IA, Cursor),
+%% em 27 nov. 2026, a partir da leitura das páginas indicadas em "url".
+%% ---------------------------------------------------------------------------
+
+% [Claude] Especificação do HTTP/2 (substitui as RFCs 7540 e 8740).
+@techreport{RFC9113:2022,
+  author        = {Thomson, Martin and Benfield, Cory},
+  title         = {{HTTP/2}},
+  institution   = {Internet Engineering Task Force (IETF)},
+  type          = {RFC},
+  number        = {9113},
+  year          = {2022},
+  month         = jun,
+  url           = {https://www.rfc-editor.org/rfc/rfc9113.html},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Especificação do HPACK, compressão de cabeçalhos do HTTP/2.
+@techreport{RFC7541:2015,
+  author        = {Peon, Roberto and Ruellan, Herv{\'e}},
+  title         = {{HPACK}: Header Compression for {HTTP/2}},
+  institution   = {Internet Engineering Task Force (IETF)},
+  type          = {RFC},
+  number        = {7541},
+  year          = {2015},
+  month         = may,
+  url           = {https://www.rfc-editor.org/rfc/rfc7541.html},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Mapeamento do gRPC sobre o HTTP/2 (cabeçalhos, trailers, GOAWAY, PING).
+@manual{gRPC-HTTP2:2026,
+  author        = {{gRPC}},
+  title         = {{gRPC} over {HTTP/2}},
+  year          = {2026},
+  url           = {https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Artigo do blog oficial do gRPC sobre balanceamento de carga (proxy L3/L4 e L7, cliente).
+@misc{gRPC-LoadBalancing:2017,
+  author        = {{gRPC}},
+  title         = {{gRPC} Load Balancing},
+  year          = {2017},
+  date          = {2017-06-15},
+  note          = {Publicado no blog do gRPC por makdharma (Google) em 15 jun. 2017},
+  url           = {https://grpc.io/blog/grpc-load-balancing/},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Guia do plugin OpenTelemetry do gRPC (métricas por chamada e por tentativa).
+@manual{gRPC-OpenTelemetry:2026,
+  author        = {{gRPC}},
+  title         = {{OpenTelemetry} Metrics},
+  year          = {2026},
+  url           = {https://grpc.io/docs/guides/opentelemetry-metrics/},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Conceitos de observabilidade: métricas, rastros e registros.
+@manual{OpenTelemetry-Observability:2026,
+  author        = {{OpenTelemetry}},
+  title         = {Observability primer},
+  year          = {2026},
+  url           = {https://opentelemetry.io/docs/concepts/observability-primer/},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Visão geral do Prometheus (modelo de dados, coleta pull, PromQL).
+@manual{Prometheus-Overview:2026,
+  author        = {{Prometheus Authors}},
+  title         = {Prometheus Overview},
+  year          = {2026},
+  url           = {https://prometheus.io/docs/introduction/overview/},
+  urlaccessdate = {27 nov. 2026}
+}
+
+% [Claude] Visão geral do Grafana (consulta e visualização de métricas, logs e rastros).
+@manual{Grafana-Documentation:2026,
+  author        = {{Grafana Labs}},
+  title         = {About {Grafana}},
+  year          = {2026},
+  url           = {https://grafana.com/docs/grafana/latest/introduction/},
+  urlaccessdate = {27 nov. 2026}
+}

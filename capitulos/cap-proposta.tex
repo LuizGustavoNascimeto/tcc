@@ -51,7 +51,8 @@ Três fluxos de negócio compõem a carga: gerenciar o inventário, buscar itens
 pública, e o gerenciamento do inventário e a compra exigem autenticação. A compra é o fluxo
 central, pois é uma transação distribuída (bloqueio do carrinho, atualização de estoque e
 pagamento, com \textit{rollback} em caso de falha) que atravessa vários serviços, inclusive o de
-autenticação. Ela gera a cadeia de chamadas mais profunda e constitui o cenário adotado para a injeção de falhas.
+autenticação. Ela gera a cadeia de chamadas mais profunda e constitui o cenário adotado para a
+injeção de falhas.
 
 A Figura~\ref{fig:sequencia-compra} detalha esse fluxo em 25 passos. As setas contínuas representam
 chamadas tratadas como síncronas, e as tracejadas, chamadas tratadas como assíncronas. Os passos são
@@ -99,8 +100,10 @@ ocorrem os passos 19 a 21. A devolução do estoque e o cancelamento do pedido c
 \textit{rollback} da compra.
 
 Os dados são armazenados em dois bancos, como mostra a Figura~\ref{fig:diagrama-banco-de-dados}. O inventário
-e as requisições de compra (\textit{tickets}) são armazenados no MongoDB, um banco \gls{nosql}, e os pedidos de compra, os
-pagamentos, os usuários e os tokens são armazenados no PostgreSQL, um banco que utiliza a \gls{sql}. Cada banco tem uma única
+e as requisições de compra (\textit{tickets}) são armazenados no MongoDB, um banco \gls{nosql}, e
+os pedidos de compra, os
+pagamentos, os usuários e os tokens são armazenados no PostgreSQL, um banco que utiliza a
+\gls{sql}. Cada banco tem uma única
 instância, com esquemas ou coleções separados por serviço. Além deles, o sistema usa o Redis, um
 banco de dados em memória, como cache do inventário nas buscas e como \textit{lock} distribuído com
 TTL durante a compra, o que evita que um bloqueio permaneça ativo caso o serviço falhe.
@@ -122,7 +125,8 @@ que permite verificar o pertencimento. Um usuário pode ter vários tokens (1:N)
 
 \section{Infraestrutura e ambiente}
 
-O experimento é executado em dois \glspl{vps} da Contabo com Ubuntu 24.04, cada um com 4~vCPUs e 8~GB de memória.
+O experimento é executado em dois \glspl{vps} da Contabo com Ubuntu 24.04, cada um com 4~vCPUs e
+8~GB de memória.
 Uma executa o sistema, e a outra executa a geração de carga (k6) e a observabilidade (Prometheus e
 Grafana), de modo que o gerador de carga não compete por recursos com o sistema testado. As
 métricas do sistema são coletadas pelo Prometheus, e as métricas do lado do cliente, pelo k6. As

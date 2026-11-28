@@ -3,8 +3,8 @@
 Este capítulo apresenta os conceitos que embasam a proposta e os experimentos. Primeiro, discute-se
 a arquitetura de microsserviços e os desafios de desenvolver uma aplicação distribuída com ela. Em
 seguida, apresenta-se o gRPC, protocolo de comunicação avaliado neste trabalho, com os mecanismos
-que oferece para lidar com falhas e a segurança dessa comunicação. Por fim, discutem-se os
-trabalhos relacionados.
+que oferece para lidar com falhas e a segurança dessa comunicação. Depois, descreve-se o
+ecossistema do gRPC. Por fim, discutem-se os trabalhos relacionados.
 
 \section{Desenvolvimento de aplicação distribuída com microsserviços}
 
@@ -20,26 +20,26 @@ executa em seu próprio processo, expõe uma interface bem definida e pode ser i
 mantido de forma independente dos demais, inclusive com tecnologias e bancos de dados próprios
 \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
 
-O tamanho de um serviço não é definido de forma absoluta: as fronteiras costumam
-seguir as capacidades do negócio, de modo que cada serviço concentre uma responsabilidade coesa e
-seja o único dono dos seus dados \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
+O tamanho de um serviço não é definido de forma absoluta: as fronteiras costumam seguir as
+capacidades do negócio, de modo que cada serviço concentre uma responsabilidade coesa e seja o
+único dono dos seus dados \cite{BuildingMicroservices:2015, MicroserviceArchitecture:2016}.
 Serviços grandes demais perdem a autonomia e voltam a se comportar como um monólito, e serviços
 pequenos demais multiplicam as chamadas pela rede e a complexidade de operar o sistema. A
 decomposição é, portanto, um compromisso, e a arquitetura compensa a complexidade adicional apenas
-em sistemas suficientemente grandes para se beneficiar da escalabilidade e da autonomia que ela oferece.
-O sistema avaliado neste trabalho segue essa lógica, com serviços separados por responsabilidade.
+em sistemas suficientemente grandes para se beneficiar da escalabilidade e da autonomia que ela
+oferece. O sistema avaliado neste trabalho segue essa lógica, com serviços separados por responsabilidade.
 
 O resultado da decomposição é um sistema distribuído: um conjunto de componentes em computadores
 interligados em rede que se comunicam e coordenam suas ações apenas pela troca de mensagens
 \cite{DistributedSystems:2013}. Essa mudança tem duas consequências centrais para este trabalho. A
-primeira é a latência: uma chamada via a rede é mais lenta que uma chamada local, pois
-envolve transmissão, serialização dos dados e cópia entre buffers
-\cite{DistributedSystems:2013}. Assim, o custo de cada chamada deixa de ser desprezível, e a forma
-como os serviços se comunicam passa a influenciar diretamente o desempenho. A segunda são as falhas
-parciais: os componentes podem falhar de forma independente enquanto os demais continuam em
-funcionamento, e o cliente não consegue distinguir se a ausência de resposta decorre de uma falha no
-servidor ou na rede \cite{DistributedSystems:2013}. Portanto, o sistema precisa ser projetado para
-detectar e tolerar falhas, e não apenas evitá-las.
+primeira é a latência: uma chamada via a rede é mais lenta que uma chamada local, pois envolve
+transmissão, serialização dos dados e cópia entre buffers \cite{DistributedSystems:2013}. Assim, o
+custo de cada chamada deixa de ser desprezível, e a forma como os serviços se comunicam passa a
+influenciar diretamente o desempenho. A segunda são as falhas parciais: os componentes podem falhar
+de forma independente enquanto os demais continuam em funcionamento, e o cliente não consegue
+distinguir se a ausência de resposta decorre de uma falha no servidor ou na rede
+\cite{DistributedSystems:2013}. Portanto, o sistema precisa ser projetado para detectar e tolerar
+falhas, e não apenas evitá-las.
 
 A distribuição dos dados introduz um terceiro desafio. Como cada serviço é dono do próprio banco,
 uma operação de negócio que atravessa vários serviços não pode contar com uma única transação
@@ -105,9 +105,8 @@ um mecanismo neutro quanto à linguagem e plataforma, extensível, para serializ
 \cite{Protobuf:2026}. As mensagens e os serviços são descritos em arquivos \texttt{.proto}, e o
 compilador \texttt{protoc}, com o plugin do gRPC, gera o código de cliente e servidor na linguagem
 escolhida \cite{gRPC-Documentation:2026}. O arquivo \texttt{.proto} funciona, assim, como um
-contrato único entre os serviços. Como transporte, o gRPC utiliza o HTTP/2, que aprimora o
-\gls{http} com enquadramento binário, multiplexação de vários fluxos em uma única conexão do
-\gls{tcp}, o \gls{hpack} e controle de fluxo \cite{LearningHTTP2:2017}.
+contrato único entre os serviços. Como transporte, o gRPC utiliza o HTTP/2, descrito na
+Seção~\ref{sec:ecossistema-grpc}.
 
 \subsection{Mecanismos de tolerância a falhas}\label{sec:mecanismos-grpc}
 
@@ -129,34 +128,80 @@ também descreve o \textit{hedging}, em que o cliente envia cópias da mesma cha
 esse mecanismo não está implementado no gRPC-Go \cite{gRFC-A6:2024}, biblioteca utilizada neste
 trabalho, e, portanto, permanece fora do escopo da avaliação.
 
-Por fim, o \textit{keepalive} verifica periodicamente se a conexão permanece operacional, enviando quadros
-PING do HTTP/2. Se o par não confirmar o recebimento dentro de um prazo, a conexão é encerrada
-\cite{gRPC-Keepalive:2026}. Por padrão, o \textit{keepalive} é desativado no cliente, e seus
-parâmetros devem estar de acordo com os do servidor, que pode encerrar a conexão de clientes cujos
-\textit{pings} considera excessivos \cite{gRPC-Keepalive:2026}. Em conjunto, esses mecanismos
+Por fim, o \textit{keepalive} verifica periodicamente se a conexão permanece operacional, enviando
+quadros PING do HTTP/2. Se o par não confirmar o recebimento dentro de um prazo, a conexão é
+encerrada \cite{gRPC-Keepalive:2026}. Por padrão, o \textit{keepalive} é desativado no cliente, e
+seus parâmetros devem estar de acordo com os do servidor, que pode encerrar a conexão de clientes
+cujos \textit{pings} considera excessivos \cite{gRPC-Keepalive:2026}. Em conjunto, esses mecanismos
 trocam capacidade por robustez, pois tentativas adicionais consomem recursos do servidor, e esse
 equilíbrio é o objeto de avaliação deste trabalho.
 
 \subsection{Segurança}\label{sec:seguranca-grpc}
 
-O gRPC não cifra a comunicação por si só. Em produção, as mensagens devem trafegar com
-a \gls{tls}, os serviços só devem responder em portas seguras, os detalhes de uma exceção não devem voltar
-ao cliente e o tamanho das mensagens de entrada deve ser limitado, pois elas são carregadas na
-memória \cite{gRPC-Security:2026}. Entre serviços, o \gls{mtls} exige certificado dos dois lados
+O gRPC não cifra a comunicação por si só. Em produção, as mensagens devem trafegar com a \gls{tls},
+os serviços só devem responder em portas seguras, os detalhes de uma exceção não devem voltar ao
+cliente e o tamanho das mensagens de entrada deve ser limitado, pois elas são carregadas na memória
+\cite{gRPC-Security:2026}. Entre serviços, o \gls{mtls} exige certificado dos dois lados
 \cite{OWASP-gRPC-Security:2026}. Esses controles são recomendações do ecossistema gRPC, e não
 medidas obtidas em um experimento com gRPC-Go.
 
 O \textit{deadline} também limita quanto tempo um servidor permanece ocupado com uma chamada. Os
-\textit{retries} podem multiplicar, no servidor, a carga originada por poucas
-chamadas do cliente \cite{OWASP-gRPC-Security:2026,gRFC-A6:2024}. A autenticação por token e a
-autorização por método protegem o serviço \cite{OWASP-gRPC-Security:2026}; neste trabalho elas
-fazem parte do sistema, e o que se mede é o efeito dos mecanismos de tolerância a falhas.
+\textit{retries} podem multiplicar, no servidor, a carga originada por poucas chamadas do cliente
+\cite{OWASP-gRPC-Security:2026,gRFC-A6:2024}. A autenticação por token e a autorização por método
+protegem o serviço \cite{OWASP-gRPC-Security:2026}. Neste trabalho, elas fazem parte do sistema, e o
+que se mede é o efeito dos mecanismos de tolerância a falhas.
 
+\section{Ecossistema gRPC}\label{sec:ecossistema-grpc}
 
+O gRPC não opera isolado, depende do HTTP/2 para o transporte e, em implantações com várias
+instâncias de um serviço, integra-se a componentes como o balanceador de carga e as ferramentas de
+monitoramento \cite{gRPC-LoadBalancing:2017}. O HTTP/2 associa cada par de requisição e resposta a
+um fluxo próprio, e os fluxos são em grande parte independentes, de modo que muitas chamadas
+compartilham uma única conexão \gls{tcp} sem que uma requisição bloqueada impeça as demais
+\cite{RFC9113:2022}. Além da multiplexação, o protocolo oferece controle de fluxo e compressão de
+cabeçalhos com \gls{hpack} \cite{RFC9113:2022, RFC7541:2015}. O gRPC associa cada chamada a um
+fluxo, o prazo da chamada segue no cabeçalho \texttt{grpc-timeout}, e o código de status volta nos
+metadados finais (\textit{trailers}) \cite{gRPC-HTTP2:2026}. Os mecanismos \textit{deadline},
+\textit{retries} e \textit{keepalive} apoiam-se nesse mapeamento. O \textit{keepalive} usa os
+quadros PING e, quando o servidor envia um quadro GOAWAY, as chamadas que ele não chegou a aceitar
+recebem o status \texttt{UNAVAILABLE} e podem ser reenviadas a outro servidor \cite{gRPC-HTTP2:2026}.
 
-\section{Ecossistema gRPC}
-% * aborde sobre proxy (envoy), istio, http2 entre outros que achar necessário.
+O Envoy é um proxy de \gls{l7} que roteia, balanceia a carga, verifica a saúde das
+instâncias e coleta estatísticas, e que transporta os \textit{trailers} do HTTP/2
+usados pelo gRPC \cite{Envoy-Documentation:2026}. O balanceamento nessa camada é relevante para o
+gRPC porque as conexões são longas e multiplexam muitas chamadas: distribuir a carga por conexão
+pode deixar os servidores desbalanceados, e um proxy que termina o HTTP/2 distribui as
+chamadas individualmente \cite{gRPC-LoadBalancing:2017}. Em contrapartida, ele fica no caminho dos
+dados e acrescenta latência, e a alternativa, o balanceamento no cliente, elimina esse salto ao
+custo de um cliente mais complexo \cite{gRPC-LoadBalancing:2017}. O custo medido de um
+proxy desse tipo é discutido na Seção~\ref{sec:trabalhos:relacionados}. O Envoy também tem
+\textit{retries}, \textit{timeouts} e \textit{circuit breaking} próprios
+\cite{Envoy-Documentation:2026}, que se sobreporiam aos do cliente gRPC: se as duas camadas
+reenviassem a mesma chamada, o número de tentativas recebidas pelo servidor seria o produto das
+tentativas de cada uma, e não seria possível atribuí-las a uma só. Portanto, neste trabalho o Envoy
+atua apenas como proxy e balanceador, com essas políticas desabilitadas.
 
+O Istio é uma malha de serviço que se sobrepõe de forma transparente a
+aplicações já existentes, com \gls{mtls}, balanceamento para gRPC, controle de tráfego e telemetria
+automática \cite{Istio-Documentation:2026}. Sua arquitetura tem um plano de dados, formado por
+proxies Envoy implantados como \textit{sidecars} junto a cada instância de serviço, e um
+plano de controle, o Istiod, que configura esses proxies e emite os certificados do
+\gls{mtls} \cite{Istio-Documentation:2026}. O padrão de \textit{sidecar} acrescenta latência e
+consumo de recursos, pois a lógica de tráfego é replicada em cada instância
+\cite{ServiceMesh-Evaluation:2022}. Este trabalho não adota uma malha: o Istio também implementa
+\textit{retries} e controle de tempo, e um \textit{sidecar} em cada pod acrescentaria um
+proxy a cada chamada no nó único do k3s, o que dificultaria atribuir a latência ao
+mecanismo avaliado. Um único Envoy basta para o balanceamento na \gls{l7} que o experimento requer.
+
+Como os resultados deste trabalho são latência, vazão e uso de recursos, o sinal de observabilidade
+relevante são as métricas \cite{OpenTelemetry-Observability:2026}. O plugin do OpenTelemetry do gRPC
+mede separadamente a duração da chamada completa e a de cada tentativa
+\cite{gRPC-OpenTelemetry:2026}, de modo que a razão entre tentativas e chamadas expressa a
+amplificação causada pelos \textit{retries}. O Envoy expõe suas estatísticas no formato do
+Prometheus \cite{Envoy-Documentation:2026}, sistema que coleta as métricas por requisições
+periódicas e as armazena como séries temporais, e o Grafana as exibe em painéis
+\cite{Prometheus-Overview:2026, Grafana-Documentation:2026}. O Prometheus e o Grafana compõem a
+observabilidade do sistema.
 
 \section{Trabalhos Relacionados}
 \label{sec:trabalhos:relacionados}
@@ -195,8 +240,6 @@ segurança. Em uma simulação de negação de serviço, bloqueou 99,98\% das re
 autorizadas. O trabalho mede o custo e a eficácia de uma camada de segurança, mas não avalia o
 risco que os próprios mecanismos de tolerância a falhas do gRPC criam.
 
-A Tabela~\ref{tab:trabalhos-relacionados} resume os trabalhos discutidos.
-
 \begin{table}[htb]
   \centering
   \caption{Comparação dos trabalhos relacionados}\label{tab:trabalhos-relacionados}
@@ -224,17 +267,20 @@ A Tabela~\ref{tab:trabalhos-relacionados} resume os trabalhos discutidos.
     \citeonline{gRPC-Security-Proxy:2025}
     & Proxy de segurança & sim & não & sim & não \\
     \hline
+    Este trabalho & Avaliação conjunta & sim & sim & sim & sim \\
+    \hline
   \end{tabularx}
   \fonte{}
 \end{table}
 
-Na Tabela~\ref{tab:trabalhos-relacionados}, as colunas indicam se cada trabalho avalia o desempenho
-da comunicação, a resiliência sob falhas, a segurança e os mecanismos nativos do gRPC
-(\textit{deadlines}, \textit{retries} e \textit{keepalive}). O foco de cada estudo aparece na
-segunda coluna. Cada trabalho trata de um aspecto isolado. \citeonline{Retry-Experiment:2023} medem
-o padrão de \textit{retry} em outra \textit{stack}, com Resilience4j e Polly, e não no gRPC-Go.
-Este trabalho propõe avaliar, em gRPC-Go, esses três mecanismos sob carga e sob falha injetada, e
-o fator de amplificação das retransmissões. Não se encontrou essa avaliação conjunta nos trabalhos revisados.
+Na Tabela~\ref{tab:trabalhos-relacionados}, observa-se que cada trabalho trata de um aspecto
+isolado da comunicação com gRPC. \citeonline{Retry-Experiment:2023} medem o padrão de
+\textit{retry} em outra \textit{stack}, com Resilience4j e Polly, e não no gRPC-Go. Este trabalho
+propõe avaliar, em gRPC-Go, esses três mecanismos sob carga e sob falha injetada, e o fator de
+amplificação das retransmissões. Não se encontrou essa avaliação conjunta nos trabalhos revisados.
+
+Este trabalho não substitui os demais, mas atende a uma lacuna diferente, e os resultados
+anteriores servem de base ao problema de pesquisa.
 
 
 %---------------------------------------------------%
